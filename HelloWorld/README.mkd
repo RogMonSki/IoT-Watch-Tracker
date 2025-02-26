@@ -1,0 +1,62 @@
+
+# HelloWorld ################################################################
+
+(For more details of the development tools see [chapter two of the course
+notes](https://iot.unphone.net/#sec:setup).)
+
+A basic ESP32 example that prints a few useful macro definitions to serial and
+blinks the inbuilt LED.
+
+Files:
+
+- `sketch/`:            source code
+  - `sketch.ino`:       main entry points: `setup` and `loop`
+- `platformio.ini`:     PlatformIO build definition
+- `merge_bin.py`:       PlatformIO firmware merge helper script (see below)
+- `build.ps1`:          PowerShell script to build using docker+platformio
+- `.gitignore`:         exclude build and IDE files from version control
+
+
+## Using a web serial flashing tool ##########################################
+
+The new web serial standard means that we can flash directly from a browser
+(only Chrome at time of writing!) using a Javascript tool like [Adafruit's
+WebSerial ESPTool](https://adafruit.github.io/Adafruit_WebSerial_ESPTool/).
+
+This facility is very helpful when we need to build in one environment (e.g. a
+Linux docker container running on a non-Linux host) and flash in another (e.g.
+the Windoze instance running the container). The complication is that a
+typical ESP32 flash process includes a bunch of `.bin` files that together
+make up the firmware, and that have to be written at different offsets in ESP
+memory. For example, to flash our `HelloWorld` example to an S3 feather the
+complete command being run by a `pio run -t upload` invocation is:
+
+```bash
+esptool.py \
+--chip esp32s3 --port "/dev/ttyACM0" --baud 921600 \
+--before default_reset --after hard_reset write_flash \
+-z --flash_mode dio --flash_freq 80m --flash_size 4MB \
+0x0000 /home/ubuntu/the-internet-of-things/support/\
+tooling/platformio/packages/framework-arduinoespressif32/\
+variants/adafruit_feather_esp32s3/bootloader-tinyuf2.bin
+0x8000 /home/ubuntu/project/.pio/build/\
+adafruit_feather_esp32s3/partitions.bin
+0xe000 /home/ubuntu/the-internet-of-things/support/\
+tooling/platformio/packages/framework-arduinoespressif32/\
+tools/partitions/boot_app0.bin
+0x2d0000 /home/ubuntu/the-internet-of-things/support/\
+tooling/platformio/packages/framework-arduinoespressif32/\
+variants/adafruit_feather_esp32s3/tinyuf2.bin
+0x10000 .pio/build/adafruit_feather_esp32s3/firmware.bin
+```
+
+While some web serial tools allow loading all this data, it is painful and
+error prone. An alternative is to first merge all the .bin files, and then
+flash them all from offset zero.
+
+To merge all the binaries we need some additional script magic, which can be
+provided by adding an `extra_script` entry to our `platformio.ini` and
+including `merge_bin.py` in the project directory. When we subsequently run a
+platformio build with `pio run` a composite `firmware_merged.bin` file will be
+created in the `.pio/build` tree, which we can then pass to the web serial
+flashing tool.
