@@ -23,18 +23,37 @@ String htmlButton(String label, String link) {
     return "<a href='" + link + "'><button>" + label + "</button></a>";
 }
 
-String htmlForm(String action, String buttonText) {
-    return "<form action='" + action + "' method='GET'><button type='submit'>" + buttonText + "</button></form>";
+void handleFormSubmit() {
+  String ssid = webServer.arg("ssid");
+  String password = webServer.arg("password");
+
+  Serial.print("Connecting to Wi-Fi...");
+  WiFi.begin(ssid, password);
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.print(".");
+  }
+
+  String response = "<h2>Connected to " + ssid + "</h2>";
+  response += "<a href='/'>Back</a>";
+
+  webServer.send(200, "text/html", response);
+}
+
+String htmlForm() {
+    return "<form action='/submit' method='GET'>"
+           "SSID: <input type='text' name='ssid'><br>"
+           "Password: <input type='password' name='password'><br>"
+           "<input type='submit' value='Submit'>"
+           "</form>";
 }
 
 // Function to handle the root URL "/"
 void handleRoot() {
    String page = htmlWrap(
         "ESP32 Web Utilities",
-        htmlHeader("Welcome to ESP32 Web Server", 1) +
-        htmlParagraph("Control your device from here.") +
-        htmlButton("Toggle LED", "/toggle") +
-        htmlForm("/reset", "Reset Device")
+        htmlHeader("Welcome to ESP32 Web Server", 1) + htmlForm()
+
     );
 
     webServer.send(200, "text/html", page);
@@ -67,6 +86,7 @@ void setup() {
   webServer.on("/", handleRoot);
   webServer.on("/toggle", handleToggle);
   webServer.on("/reset", handleReset);
+  webServer.on("/submit", handleFormSubmit);
 
   // Start Web Server
   webServer.begin();
