@@ -19,21 +19,16 @@
 const char* ssid = "ssid";
 const char* password = "password";
 
-void setup() {
-  Serial.begin(115200);
+bool wifiDisconnected = true;
 
-  pinMode(RED_LED, OUTPUT);
-  pinMode(YELLOW_LED, OUTPUT);
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(SWITCH, INPUT_PULLUP);
+void connectToWiFi(){
+  DEBUG_PRINT("Attempting WiFi Connection...");
 
-  digitalWrite(RED_LED, HIGH); // WiFi not connected
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(YELLOW_LED, HIGH);  // WiFi attempting to connect
+  digitalWrite(GREEN_LED, LOW);
 
   WiFi.begin(ssid, password);
-  DEBUG_PRINT("Connecting to WiFi...");
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(YELLOW_LED, HIGH); // WiFi attempting to connect
-
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 20) { // Attempts to connect for 10 seconds
     delay(500);
@@ -45,11 +40,40 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     DEBUG_PRINT("WiFi Connected!!!");
     digitalWrite(GREEN_LED, HIGH); // WiFi Connected
+    wifiDisconnected = false;
   } else {
     DEBUG_PRINT("\nWiFi Connection Failed :(");
     digitalWrite(RED_LED, HIGH); // WiFi not connected
   }
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(SWITCH, INPUT_PULLUP);
+
+  digitalWrite(RED_LED, HIGH); // WiFi not connected
+
+  connectToWiFi();
   
 }
 
-void loop() {}
+void loop() {
+  // Continuously check Wi-Fi status and update LED's accordingly
+  if (WiFi.status() != WL_CONNECTED && !wifiDisconnected) {
+    DEBUG_PRINT("WiFi Disconnected :(");
+    wifiDisconnected = true;
+
+    digitalWrite(GREEN_LED, LOW);  
+    digitalWrite(RED_LED, HIGH);
+  }
+
+  // Allows the user to retry connection by pressing input switch
+  if (digitalRead(SWITCH) == LOW && wifiDisconnected) {
+    DEBUG_PRINT("Attempting to connect to WiFi!");
+    connectToWiFi();
+  }
+}
