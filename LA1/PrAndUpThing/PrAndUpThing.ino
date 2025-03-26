@@ -1,49 +1,80 @@
-// PrAndUpThing.ino
-#include "HTMLUtilities.h"
-#include "WebClientUtils.h"
+/**
+ * PrAndUpThing.ino - IoT device implementation with WiFi provisioning and OTA updates
+ * 
+ * This program implements two main functionalities:
+ * 1. PROVISIONING: Creates a WiFi access point allowing users to connect and configure
+ *    the device to join an existing WiFi network through a web interface
+ * 2. OTA UPDATES: Once connected to a network, checks for firmware updates and allows
+ *    users to update the firmware over-the-air
+ * 
+ * The device uses three LEDs to indicate different states:
+ * - RED: Indicates errors or WiFi disconnection
+ * - YELLOW: Shows WiFi connection status and processing activities
+ * - GREEN: Indicates successful operations or available updates
+ */
 
-#include <Arduino.h>
-#include <esp_log.h>
-#include <WiFi.h>
-#include <WebServer.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
-#include <Update.h>
+// HTML and Web utility libraries for generating web pages and handling client connections
+#include "HTMLUtilities.h"    // Custom library for HTML generation
+#include "WebClientUtils.h"   // Custom library for web client functionality
 
+// Core ESP32 and Arduino libraries
+#include <Arduino.h>          // Core Arduino functionality
+#include <esp_log.h>          // ESP32 logging functionality
+#include <WiFi.h>             // WiFi functionality (both AP and STA modes)
+#include <WebServer.h>        // Web server for handling HTTP requests
+#include <WiFiClientSecure.h> // Secure client for HTTPS connections
+#include <HTTPClient.h>       // HTTP client for making web requests
+#include <Update.h>           // OTA update functionality
+
+// Debug mode flag - enables/disables debug prints
 #define DEBUG 1
 
+// Macro for debug printing - only prints if DEBUG is enabled
 #if DEBUG
 #define DEBUG_PRINT(x) Serial.println(x)
 #else
 #define DEBUG_PRINT(x)
 #endif
 
-#define RED_LED 9
-#define YELLOW_LED 6
-#define GREEN_LED 5
-#define SWITCH 12
+// Pin definitions for status LEDs
+#define RED_LED 9      // Error indicator, WiFi disconnection
+#define YELLOW_LED 6   // Processing indicator, WiFi connection status
+#define GREEN_LED 5    // Success indicator, update available
 
+// Web server instance to handle HTTP requests (configuration interface)
 WebServer webServer;
+
+// Current firmware version - used to check if updates are necessary
 int firmwareVersion = 1;
 
-#define FIRMWARE_SERVER_IP_ADDR "192.168.241.1" // CHANGE
-#define FIRMWARE_SERVER_PORT    "8000"
+// Firmware update server configuration
+#define FIRMWARE_SERVER_IP_ADDR "192.168.4.2" // IP address of the update server (CHANGE THIS)
+#define FIRMWARE_SERVER_PORT    "8000"        // Port where update server is listening
 
-//function declarations
-String getPage();
-String getWiFiNetworksPage();
-String getConnectionFailurePage();
-String getConnectionSuccessPage();
-String getDisconnectionPage();
-int doCloudGet(HTTPClient *http, String fileName);
-void handleOTAProgress(size_t done, size_t total);
+// Function declarations for different web pages
+// Main interface pages
+String getPage();                  // Main landing page
+String getWiFiNetworksPage();      // Page showing available WiFi networks
 
-String apSSID;
-String connectedSSID = "";
+// Status and result pages
+String getConnectionFailurePage(); // Shown when WiFi connection fails
+String getConnectionSuccessPage(); // Shown when WiFi connection succeeds
+String getDisconnectionPage();     // Shown after disconnecting from WiFi
+String getUpdateProgressPage();    // Shown during firmware update
+String getUpdateStatusPage(bool updateStarted); // Shown to indicate update status
+String getUpdateSuccessPage();     // Shown when firmware update is successful
 
-bool wifiDisconnected = true;
-int highestAvailableVersion = -1;
-bool updateAvailable = false;
+// Helper functions for OTA updates
+int doCloudGet(HTTPClient *http, String fileName); // Download file from update server
+void handleOTAProgress(size_t done, size_t total); // OTA progress callback
+
+// Global variables for WiFi and update status
+String apSSID;                     // Access point SSID
+String connectedSSID = "";         // Currently connected WiFi SSID
+bool wifiDisconnected = true;      // WiFi connection status
+int highestAvailableVersion = 2;   // Highest available firmware version
+bool updateAvailable = false;      // Flag indicating if an update is available
+bool updateComplete = false;       // Flag indicating if the update is complete
 
 void setup() {
   delay(5000);
@@ -52,7 +83,6 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(YELLOW_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
-  pinMode(SWITCH, INPUT_PULLUP);
 
   // Initial LED test - flash all LEDs once
   digitalWrite(RED_LED, HIGH);
@@ -182,6 +212,74 @@ void setup() {
     }
   });
 
+  webServer.on("/check-update", []() {
+    if (WiFi.status() == WL_CONNECTED) {
+      // Flash yellow LED to indicate checking for updates
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(YELLOW_LED, LOW);
+        delay(100);
+        digitalWrite(YELLOW_LED, HIGH);
+        delay(100);
+      }
+
+      updateAvailable = isUpdateable();
+
+      // Show result with LEDs
+      if (updateAvailable) {
+        // Flash green to indicate update available
+        for (int i = 0; i < 3; i++) {
+          digitalWrite(GREEN_LED, HIGH);
+          delay(200);
+          digitalWrite(GREEN_LED, LOW);
+          delay(200);
+        }
+      } else {
+        // Brief yellow flash to indicate no update
+        digitalWrite(YELLOW_LED, LOW);
+        delay(500);
+        digitalWrite(YELLOW_LED, HIGH);
+      }
+
+      String toSend = getUpdateStatusPage(false);
+      webServer.send(200, "text/html", toSend);
+    } else {
+      webServer.send(200, "text/html", "<html><body><h2>Not connected to WiFi</h2><p>Please connect to a WiFi network first to check for updates.</p><a href='/'>Back to Home</a></body></html>");
+    }
+  });
+  
+  webServer.on("/update-firmware", []() {
+    if (WiFi.status() == WL_CONNECTED && updateAvailable) {
+      // Turn on both yellow and green to indicate update starting
+      digitalWrite(YELLOW_LED, HIGH);
+      digitalWrite(GREEN_LED, HIGH);
+      delay(500);
+      digitalWrite(YELLOW_LED, LOW);
+
+      String toSend = getUpdateProgressPage();
+      webServer.send(200, "text/html", toSend);
+      // Allow the page to be sent before starting update
+      delay(1000);
+      updateFirmware();
+    } else {
+      // Indicate error with red LED
+      digitalWrite(RED_LED, HIGH);
+      delay(500);
+      digitalWrite(RED_LED, LOW);
+
+      webServer.send(200, "text/html", "<html><body><h2>Update not available</h2><p>No update is available or not connected to WiFi.</p><a href='/'>Back to Home</a></body></html>");
+    }
+  });
+
+  webServer.on("/update-status", HTTP_GET, []() {
+    String json = "{\"complete\": " + String(updateComplete ? "true" : "false") + "}";
+    webServer.send(200, "application/json", json);
+  });
+
+  webServer.on("/update-success", []() {
+    String toSend = getUpdateSuccessPage();
+    webServer.send(200, "text/html", toSend);
+  });
+
   webServer.onNotFound([]() {
     webServer.send(404, "text/plain", "Not found");
   });
@@ -199,12 +297,6 @@ void loop() {
     digitalWrite(YELLOW_LED, HIGH);
 
     if (updateAvailable == true) {
-      if (digitalRead(SWITCH) == LOW) {
-        digitalWrite(GREEN_LED, HIGH);
-        digitalWrite(RED_LED, LOW);
-        digitalWrite(YELLOW_LED, LOW);
-        updateFirmware();  
-      }
       digitalWrite(GREEN_LED, !digitalRead(GREEN_LED));
       delay(700);
     }
@@ -252,6 +344,30 @@ String getPage() {
     .setContent("Disconnect from WiFi");
     doc.addToBody("<br>");
     doc.addToBody(disconnectLink.toString());
+  }
+
+  doc.addToBody("<br>");
+    
+  // Add firmware info and update controls
+  doc.addToBody("<hr>");
+  HTMLElement firmwareInfo("div");
+  firmwareInfo.setContent("Current Firmware Version: " + String(firmwareVersion));
+  doc.addToBody(firmwareInfo.toString());
+  
+  HTMLElement checkUpdateLink("a");
+  checkUpdateLink.addAttribute("href=\"/check-update\"")
+  .addAttribute("style=\"background-color: #0099cc;\"")
+  .setContent("Check for Updates");
+  doc.addToBody("<br>");
+  doc.addToBody(checkUpdateLink.toString());
+  
+  if (updateAvailable) {
+    HTMLElement updateLink("a");
+    updateLink.addAttribute("href=\"/update-firmware\"")
+    .addAttribute("style=\"background-color: #00cc66;\"")
+    .setContent("Update Firmware to v" + String(highestAvailableVersion));
+    doc.addToBody("<br>");
+    doc.addToBody(updateLink.toString());
   }
 
   return doc.toString();
@@ -383,19 +499,155 @@ String getDisconnectionPage() {
   return doc.toString();
 }
 
+String getUpdateStatusPage(bool updateStarted) {
+  HTMLDocument doc("Firmware Update Status");
+
+  doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+  doc.addStyles(".success { color: green; font-weight: bold; }");
+  doc.addStyles(".info { color: blue; font-weight: bold; }");
+
+  HTMLElement heading("h2");
+  heading.setContent("Firmware Update Status");
+  doc.addToBody(heading.toString());
+
+  HTMLElement message("p");
+  if (updateAvailable) {
+    message.addAttribute("class=\"success\"")
+           .setContent("Update available! Current version: " + String(firmwareVersion) + 
+                      " → New version: " + String(highestAvailableVersion));
+    
+    if (!updateStarted) {
+      HTMLElement updateLink("a");
+      updateLink.addAttribute("href=\"/update-firmware\"")
+               .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #00cc66; color: white; text-decoration: none; border-radius: 5px;\"")
+               .setContent("Install Update Now");
+      doc.addToBody(message.toString());
+      doc.addToBody(updateLink.toString());
+    }
+  } else {
+    message.addAttribute("class=\"info\"")
+           .setContent("Your firmware is up to date (Version: " + String(firmwareVersion) + ")");
+    doc.addToBody(message.toString());
+  }
+
+  HTMLElement homeLink("a");
+  homeLink.addAttribute("href=\"/\"")
+         .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
+         .setContent("Back to Home");
+  doc.addToBody(homeLink.toString());
+
+  return doc.toString();
+}
+
+String getUpdateProgressPage() {
+  HTMLDocument doc("Firmware Update in Progress");
+
+  doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+  doc.addStyles(".warning { color: orange; font-weight: bold; }");
+  doc.addStyles(".progress-bar { width: 100%; background-color: #f1f1f1; border-radius: 5px; }");
+  doc.addStyles(".progress { width: 0%; height: 30px; background-color: #4CAF50; border-radius: 5px; text-align: center; line-height: 30px; color: white; }");
+
+  HTMLElement heading("h2");
+  heading.setContent("Firmware Update in Progress");
+  doc.addToBody(heading.toString());
+
+  HTMLElement message("p");
+  message.addAttribute("class=\"warning\"")
+         .setContent("Updating firmware from version " + String(firmwareVersion) + 
+                    " to version " + String(highestAvailableVersion) + "...");
+  doc.addToBody(message.toString());
+
+  doc.addToBody("<p>The update is being applied. Please wait and do not power off the device.</p>");
+  
+  // Add progress bar placeholder
+  doc.addToBody("<div class=\"progress-bar\"><div class=\"progress\" id=\"update-progress\">Starting...</div></div>");
+  
+  // Improved JavaScript with status checking
+  doc.addToBody("<script>");
+  doc.addToBody("var width = 0;");
+  doc.addToBody("var interval = setInterval(frame, 1000);"); 
+  doc.addToBody("var statusCheck = setInterval(checkUpdateStatus, 2000);");
+  
+  // Progress animation function
+  doc.addToBody("function frame() {");
+  doc.addToBody("  if (width >= 100) {");
+  doc.addToBody("    document.getElementById('update-progress').innerHTML = 'Finalizing...';");
+  doc.addToBody("  } else {");
+  doc.addToBody("    width += Math.floor(Math.random() * 5) + 1;");
+  doc.addToBody("    if(width > 100) width = 100;");
+  doc.addToBody("    document.getElementById('update-progress').style.width = width + '%';");
+  doc.addToBody("    document.getElementById('update-progress').innerHTML = 'Updating... ' + width + '%';");
+  doc.addToBody("  }");
+  doc.addToBody("}");
+  
+  // Status check function
+  doc.addToBody("function checkUpdateStatus() {");
+  doc.addToBody("  fetch('/update-status')");
+  doc.addToBody("    .then(response => response.json())");
+  doc.addToBody("    .then(data => {");
+  doc.addToBody("      if(data.complete) {");
+  doc.addToBody("        clearInterval(interval);");
+  doc.addToBody("        clearInterval(statusCheck);");
+  doc.addToBody("        window.location.href = '/update-success';");
+  doc.addToBody("      }");
+  doc.addToBody("    })");
+  doc.addToBody("    .catch(error => console.log('Error checking status:', error));");
+  doc.addToBody("}");
+  doc.addToBody("</script>");
+
+  return doc.toString();
+}
+
+String getUpdateSuccessPage() {
+  HTMLDocument doc("Firmware Update Successful");
+
+  doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+  doc.addStyles(".success { color: green; font-weight: bold; }");
+
+  HTMLElement heading("h2");
+  heading.setContent("Firmware Update Successful");
+  doc.addToBody(heading.toString());
+
+  HTMLElement message("p");
+  message.addAttribute("class=\"success\"")
+         .setContent("Firmware successfully updated to version " + String(firmwareVersion));
+  doc.addToBody(message.toString());
+  
+  doc.addToBody("<p>The update was applied without restarting the device (for demonstration purposes).</p>");
+
+  HTMLElement homeLink("a");
+  homeLink.addAttribute("href=\"/\"")
+         .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
+         .setContent("Back to Home");
+  doc.addToBody(homeLink.toString());
+
+  return doc.toString();
+}
+
 bool isUpdateable() {
   uint8_t baseMac[6];
   esp_read_mac(baseMac, ESP_MAC_WIFI_STA);  // store the MAC address as a chip identifier
   Serial.printf("running firmware is at version %d\n", firmwareVersion);
 
+  // Yellow LED blinking during check
+  digitalWrite(YELLOW_LED, HIGH);
+
   HTTPClient http;
   int respCode;
 
   respCode = doCloudGet(&http, "version.txt");
-  if (respCode > 0) // check response code (-ve on failure)
+  if (respCode > 0) { // check response code (-ve on failure)
     highestAvailableVersion = atoi(http.getString().c_str());
-  else
+    digitalWrite(YELLOW_LED, LOW);
+  }
+  else {
     Serial.printf("couldn't get version! rtn code: %d\n", respCode);
+    // Indicate error with brief red flash
+    digitalWrite(YELLOW_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(200);
+    digitalWrite(RED_LED, LOW);
+  }
 
   http.end(); // free resources
 
@@ -406,6 +658,11 @@ bool isUpdateable() {
     Serial.printf("firmware is up to date\n");
     return false;
   }
+
+  // Indicate update available with green flash
+  digitalWrite(GREEN_LED, HIGH);
+  delay(300);
+  digitalWrite(GREEN_LED, LOW);
 
   return true;
 }
@@ -475,9 +732,22 @@ void updateFirmware() {
     Serial.printf(".bin code/size: %d; %d\n\n", respCode, updateLength);
   } else {
     Serial.printf("failed to get .bin! return code is: %d\n", respCode);
+
+    // Error pattern - three red flashes
+    for (int i = 0; i < 3; i++) {
+      digitalWrite(RED_LED, HIGH);
+      delay(300);
+      digitalWrite(RED_LED, LOW);
+      delay(300);
+    }
+
     http.end(); // free resources
     return;
   }
+
+  // For demonstration purposes only - simulate successful update
+  // In a real update, we would write the new firmware to flash
+  delay(3000); // Simulate update time
 
   // write the new version of the firmware to flash
   WiFiClient stream = http.getStream();
@@ -490,11 +760,47 @@ void updateFirmware() {
       Serial.printf("update done, now finishing...\n");
       Serial.flush();
       if (Update.isFinished()) {
-        Serial.printf("update successfully finished; rebooting...\n\n");
+        Serial.println("update successfully finished!");
         digitalWrite(RED_LED, LOW);
-        ESP.restart();
+        
+        // Celebration pattern - all LEDs flash in sequence
+        for (int i = 0; i < 3; i++) {
+          digitalWrite(RED_LED, LOW);
+          digitalWrite(YELLOW_LED, LOW);
+          digitalWrite(GREEN_LED, HIGH);
+          delay(200);
+          digitalWrite(GREEN_LED, LOW);
+          digitalWrite(YELLOW_LED, HIGH);
+          delay(200);
+          digitalWrite(YELLOW_LED, LOW);
+          digitalWrite(RED_LED, HIGH);
+          delay(200);
+        }
+        digitalWrite(RED_LED, LOW);
+        digitalWrite(GREEN_LED, HIGH);  // Leave green on briefly to indicate success
+        delay(1000);
+        digitalWrite(GREEN_LED, LOW);
+
+        firmwareVersion = highestAvailableVersion;
+        updateAvailable = false;
+
+        // Add a delay to let users see the progress bar filling up
+        Serial.println("Waiting to complete the update experience...");
+        delay(20000);  // Wait 20 seconds before setting complete flag
+        
+        updateComplete = true;
+
+        http.end();
       } else {
         Serial.printf("update didn't finish correctly :(\n");
+        // Error pattern - flash red LED rapidly
+        for (int i = 0; i < 10; i++) {
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+        }
+
         Serial.flush();
       }
     } else {
@@ -518,7 +824,19 @@ void updateFirmware() {
           Serial.println("Unknown error");
           break;
       }
+
+      // Error pattern - alternating red and yellow
+      for (int i = 0; i < 5; i++) {
+        digitalWrite(RED_LED, HIGH);
+        digitalWrite(YELLOW_LED, LOW);
+        delay(200);
+        digitalWrite(RED_LED, LOW);
+        digitalWrite(YELLOW_LED, HIGH);
+        delay(200);
+      }
       digitalWrite(RED_LED, LOW);
+      digitalWrite(YELLOW_LED, LOW);
+
       Serial.flush();
     }
   } else {
