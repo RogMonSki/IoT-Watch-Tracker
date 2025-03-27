@@ -77,7 +77,7 @@ bool updateAvailable = false;      // Flag indicating if an update is available
 bool updateComplete = false;       // Flag indicating if the update is complete
 
 void setup() {
-  delay(5000);
+  delay(10000);
   Serial.begin(115200);
 
   pinMode(RED_LED, OUTPUT);
@@ -164,6 +164,8 @@ void setup() {
           delay(200);
         }
 
+        digitalWrite(RED_LED, LOW);
+
         updateAvailable = isUpdateable();
 
         webServer.send(200, "text/html", getConnectionSuccessPage());
@@ -178,6 +180,8 @@ void setup() {
           delay(200);
         }
 
+        digitalWrite(RED_LED, HIGH);
+
         webServer.send(200, "text/html", getConnectionFailurePage());
       }
     } else {
@@ -187,8 +191,6 @@ void setup() {
 
   webServer.on("/disconnect", []() {
     if (WiFi.status() == WL_CONNECTED) {
-      // Yellow LED during disconnection
-      digitalWrite(YELLOW_LED, HIGH);
 
       WiFi.disconnect();
       Serial.println("Disconnected from WiFi network: " + connectedSSID);
@@ -205,6 +207,8 @@ void setup() {
         digitalWrite(GREEN_LED, LOW);
         delay(200);
       }
+
+      digitalWrite(RED_LED, HIGH);
 
       webServer.send(200, "text/html", getDisconnectionPage());
     } else {
@@ -290,6 +294,7 @@ void setup() {
 
 void loop() {
   webServer.handleClient();
+
   // Continuously check Wi-Fi status and update LED's accordingly
   // LED indicators based on state
   if (WiFi.status() == WL_CONNECTED) {
@@ -302,11 +307,15 @@ void loop() {
     }
 
   } else {
+    if (!wifiDisconnected) {
+      wifiDisconnected = true;
+      updateAvailable = false;
+      digitalWrite(RED_LED, HIGH);
+      digitalWrite(GREEN_LED, LOW);
+    }
+
     // Access point mode - blink yellow LED (waiting for connection)
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(YELLOW_LED, HIGH);
-    delay(300);
-    digitalWrite(YELLOW_LED, LOW);
+    digitalWrite(YELLOW_LED, !digitalRead(YELLOW_LED));
     delay(700);
   }
 }
@@ -728,121 +737,119 @@ void updateFirmware() {
   int updateLength = http.getSize();
 
   // possible improvement: if size is improbably big or small, refuse
-  if (respCode > 0 && respCode != 404) { // check response code (-ve on failure)
-    Serial.printf(".bin code/size: %d; %d\n\n", respCode, updateLength);
-  } else {
+  if (respCode <= 0 || respCode == 404) {
     Serial.printf("failed to get .bin! return code is: %d\n", respCode);
-
-    // Error pattern - three red flashes
     for (int i = 0; i < 3; i++) {
       digitalWrite(RED_LED, HIGH);
       delay(300);
       digitalWrite(RED_LED, LOW);
       delay(300);
     }
-
-    http.end(); // free resources
+    http.end();
     return;
   }
 
-  // For demonstration purposes only - simulate successful update
-  // In a real update, we would write the new firmware to flash
-  delay(3000); // Simulate update time
+  Serial.printf(".bin code/size: %d; %d\n\n", respCode, updateLength);
 
   // write the new version of the firmware to flash
   WiFiClient stream = http.getStream();
   Update.onProgress(handleOTAProgress); // print out progress
+
   if (Update.begin(updateLength, U_FLASH)) {
     Serial.printf("starting OTA may take a minute or two...\n");
-    digitalWrite(RED_LED, HIGH);
-    Update.writeStream(stream);
-    if (Update.end()) {
-      Serial.printf("update done, now finishing...\n");
-      Serial.flush();
-      if (Update.isFinished()) {
-        Serial.println("update successfully finished!");
-        digitalWrite(RED_LED, LOW);
-        
-        // Celebration pattern - all LEDs flash in sequence
-        for (int i = 0; i < 3; i++) {
-          digitalWrite(RED_LED, LOW);
-          digitalWrite(YELLOW_LED, LOW);
-          digitalWrite(GREEN_LED, HIGH);
-          delay(200);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(YELLOW_LED, HIGH);
-          delay(200);
-          digitalWrite(YELLOW_LED, LOW);
-          digitalWrite(RED_LED, HIGH);
-          delay(200);
-        }
-        digitalWrite(RED_LED, LOW);
-        digitalWrite(GREEN_LED, HIGH);  // Leave green on briefly to indicate success
-        delay(1000);
-        digitalWrite(GREEN_LED, LOW);
 
-        firmwareVersion = highestAvailableVersion;
-        updateAvailable = false;
+    unsigned long startTime = millis();
+    bool updateFinished = false;
+    int ledValue = LOW;
 
-        // Add a delay to let users see the progress bar filling up
-        Serial.println("Waiting to complete the update experience...");
-        delay(20000);  // Wait 20 seconds before setting complete flag
-        
-        updateComplete = true;
+    while (!Update.isFinished() && !updateFinished) {
+      Update.writeStream(stream);
 
-        http.end();
-      } else {
-        Serial.printf("update didn't finish correctly :(\n");
-        // Error pattern - flash red LED rapidly
-        for (int i = 0; i < 10; i++) {
-          digitalWrite(RED_LED, HIGH);
-          delay(100);
-          digitalWrite(RED_LED, LOW);
-          delay(100);
-        }
-
-        Serial.flush();
-      }
-    } else {
-      Serial.printf("an update error occurred, #: %d\n", Update.getError());
-
-      // More detailed error messages based on error code
-      switch (Update.getError()) {
-        case UPDATE_ERROR_SIZE:
-          Serial.println("Error: Update size is wrong");
-          break;
-        case UPDATE_ERROR_WRITE:
-          Serial.println("Error: Flash write failed");
-          break;
-        case UPDATE_ERROR_ERASE:
-          Serial.println("Error: Flash erase failed");
-          break;
-        case UPDATE_ERROR_MAGIC_BYTE:
-          Serial.println("Error: Magic byte is wrong, not 0xE9");
-          break;
-        default:
-          Serial.println("Unknown error");
-          break;
+      if (millis() - startTime >= 200) {
+        digitalWrite(RED_LED, !digitalRead(RED_LED));
+        startTime = millis();
       }
 
-      // Error pattern - alternating red and yellow
-      for (int i = 0; i < 5; i++) {
+      if (stream.available() == 0) {
+        if (Update.end()) {
+          Serial.printf("update done, now finishing...\n");
+          Serial.flush();
+          if (Update.isFinished()) {
+            updateFinished = true;
+          }
+        }
+      }
+    }
+
+    digitalWrite(RED_LED, LOW);
+
+    if (updateFinished) {
+      Serial.println("update successfully finished!");
+
+      // Continue flashing red LED during the 20-second wait
+      Serial.println("Waiting to complete the update experience...");
+      startTime = millis();
+      int lastToggle = startTime;
+      unsigned long waitDuration = 20000;  // 20 seconds
+      while (millis() - startTime < waitDuration) {
+        if (millis() - lastToggle  >= 200) {  // Flash every 200ms
+          digitalWrite(RED_LED, !digitalRead(RED_LED));
+          lastToggle = millis();
+        }
+      }
+
+      // Turn off red LED after wait period
+      digitalWrite(RED_LED, LOW);
+
+      // Celebration pattern - all LEDs flash in sequence
+      for (int i = 0; i < 3; i++) {
         digitalWrite(RED_LED, HIGH);
         digitalWrite(YELLOW_LED, LOW);
+        digitalWrite(GREEN_LED, LOW);
         delay(200);
         digitalWrite(RED_LED, LOW);
         digitalWrite(YELLOW_LED, HIGH);
+        digitalWrite(GREEN_LED, LOW);
         delay(200);
+        digitalWrite(RED_LED, LOW);
+        digitalWrite(YELLOW_LED, LOW);
+        digitalWrite(GREEN_LED, HIGH);
+        delay(200);
+        digitalWrite(GREEN_LED, LOW);
       }
-      digitalWrite(RED_LED, LOW);
-      digitalWrite(YELLOW_LED, LOW);
 
+      firmwareVersion = highestAvailableVersion;
+      updateAvailable = false;
+      updateComplete = true;
+
+      digitalWrite(GREEN_LED, HIGH);  // Leave green on briefly to indicate success
+      delay(1000);
+      digitalWrite(GREEN_LED, LOW);
+    } else {
+      Serial.printf("update didn't finish correctly :(\n");
+      for (int i = 0; i < 10; i++) {
+        digitalWrite(RED_LED, HIGH);
+        delay(100);
+        digitalWrite(RED_LED, LOW);
+        delay(100);
+      }
       Serial.flush();
     }
   } else {
     Serial.printf("not enough space to start OTA update :(\n");
+    for (int i = 0; i < 5; i++) {
+      digitalWrite(RED_LED, HIGH);
+      digitalWrite(YELLOW_LED, LOW);
+      delay(200);
+      digitalWrite(RED_LED, LOW);
+      digitalWrite(YELLOW_LED, HIGH);
+      delay(200);
+    }
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(YELLOW_LED, LOW);
     Serial.flush();
   }
-  stream.flush();
 
+  stream.flush();
+  http.end();
 }
