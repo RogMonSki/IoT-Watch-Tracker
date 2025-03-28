@@ -1,17 +1,17 @@
 /**
- * PrAndUpThing.ino - IoT device implementation with WiFi provisioning and OTA updates
- * 
- * This program implements two main functionalities:
- * 1. PROVISIONING: Creates a WiFi access point allowing users to connect and configure
- *    the device to join an existing WiFi network through a web interface
- * 2. OTA UPDATES: Once connected to a network, checks for firmware updates and allows
- *    users to update the firmware over-the-air
- * 
- * The device uses three LEDs to indicate different states:
- * - RED: Indicates errors or WiFi disconnection
- * - YELLOW: Shows WiFi connection status and processing activities
- * - GREEN: Indicates successful operations or available updates
- */
+   PrAndUpThing.ino - IoT device implementation with WiFi provisioning and OTA updates
+
+   This program implements two main functionalities:
+   1. PROVISIONING: Creates a WiFi access point allowing users to connect and configure
+      the device to join an existing WiFi network through a web interface
+   2. OTA UPDATES: Once connected to a network, checks for firmware updates and allows
+      users to update the firmware over-the-air
+
+   The device uses three LEDs to indicate different states:
+   - RED: Indicates errors or WiFi disconnection
+   - YELLOW: Shows WiFi connection status and processing activities
+   - GREEN: Indicates successful operations or available updates
+*/
 
 // HTML and Web utility libraries for generating web pages and handling client connections
 #include "HTMLUtilities.h"    // Custom library for HTML generation
@@ -75,9 +75,11 @@ bool wifiDisconnected = true;      // WiFi connection status
 int highestAvailableVersion = 2;   // Highest available firmware version
 bool updateAvailable = false;      // Flag indicating if an update is available
 bool updateComplete = false;       // Flag indicating if the update is complete
+float otaProgress = 0.0;
+bool startUpdate = false;
 
 void setup() {
-  delay(10000);
+  delay(1000);
   Serial.begin(115200);
 
   pinMode(RED_LED, OUTPUT);
@@ -250,7 +252,7 @@ void setup() {
       webServer.send(200, "text/html", "<html><body><h2>Not connected to WiFi</h2><p>Please connect to a WiFi network first to check for updates.</p><a href='/'>Back to Home</a></body></html>");
     }
   });
-  
+
   webServer.on("/update-firmware", []() {
     if (WiFi.status() == WL_CONNECTED && updateAvailable) {
       // Turn on both yellow and green to indicate update starting
@@ -262,8 +264,8 @@ void setup() {
       String toSend = getUpdateProgressPage();
       webServer.send(200, "text/html", toSend);
       // Allow the page to be sent before starting update
-      delay(1000);
-      updateFirmware();
+      delay(5000);
+      startUpdate = true;
     } else {
       // Indicate error with red LED
       digitalWrite(RED_LED, HIGH);
@@ -284,6 +286,11 @@ void setup() {
     webServer.send(200, "text/html", toSend);
   });
 
+  webServer.on("/update-progress", HTTP_GET, []() {
+    String json = "{\"progress\": " + String(otaProgress) + "}";
+    webServer.send(200, "application/json", json);
+  });
+
   webServer.onNotFound([]() {
     webServer.send(404, "text/plain", "Not found");
   });
@@ -294,6 +301,11 @@ void setup() {
 
 void loop() {
   webServer.handleClient();
+
+  if (startUpdate) {
+    updateFirmware();
+    startUpdate = false;
+  }
 
   // Continuously check Wi-Fi status and update LED's accordingly
   // LED indicators based on state
@@ -356,20 +368,20 @@ String getPage() {
   }
 
   doc.addToBody("<br>");
-    
+
   // Add firmware info and update controls
   doc.addToBody("<hr>");
   HTMLElement firmwareInfo("div");
   firmwareInfo.setContent("Current Firmware Version: " + String(firmwareVersion));
   doc.addToBody(firmwareInfo.toString());
-  
+
   HTMLElement checkUpdateLink("a");
   checkUpdateLink.addAttribute("href=\"/check-update\"")
   .addAttribute("style=\"background-color: #0099cc;\"")
   .setContent("Check for Updates");
   doc.addToBody("<br>");
   doc.addToBody(checkUpdateLink.toString());
-  
+
   if (updateAvailable) {
     HTMLElement updateLink("a");
     updateLink.addAttribute("href=\"/update-firmware\"")
@@ -522,27 +534,27 @@ String getUpdateStatusPage(bool updateStarted) {
   HTMLElement message("p");
   if (updateAvailable) {
     message.addAttribute("class=\"success\"")
-           .setContent("Update available! Current version: " + String(firmwareVersion) + 
-                      " → New version: " + String(highestAvailableVersion));
-    
+    .setContent("Update available! Current version: " + String(firmwareVersion) +
+                " → New version: " + String(highestAvailableVersion));
+
     if (!updateStarted) {
       HTMLElement updateLink("a");
       updateLink.addAttribute("href=\"/update-firmware\"")
-               .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #00cc66; color: white; text-decoration: none; border-radius: 5px;\"")
-               .setContent("Install Update Now");
+      .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #00cc66; color: white; text-decoration: none; border-radius: 5px;\"")
+      .setContent("Install Update Now");
       doc.addToBody(message.toString());
       doc.addToBody(updateLink.toString());
     }
   } else {
     message.addAttribute("class=\"info\"")
-           .setContent("Your firmware is up to date (Version: " + String(firmwareVersion) + ")");
+    .setContent("Your firmware is up to date (Version: " + String(firmwareVersion) + ")");
     doc.addToBody(message.toString());
   }
 
   HTMLElement homeLink("a");
   homeLink.addAttribute("href=\"/\"")
-         .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
-         .setContent("Back to Home");
+  .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
+  .setContent("Back to Home");
   doc.addToBody(homeLink.toString());
 
   return doc.toString();
@@ -562,52 +574,61 @@ String getUpdateProgressPage() {
 
   HTMLElement message("p");
   message.addAttribute("class=\"warning\"")
-         .setContent("Updating firmware from version " + String(firmwareVersion) + 
-                    " to version " + String(highestAvailableVersion) + "...");
+  .setContent("Updating firmware from version " + String(firmwareVersion) +
+              " to version " + String(highestAvailableVersion) + "...");
   doc.addToBody(message.toString());
 
   doc.addToBody("<p>The update is being applied. Please wait and do not power off the device.</p>");
-  
+
   // Add progress bar placeholder
   doc.addToBody("<div class=\"progress-bar\"><div class=\"progress\" id=\"update-progress\">Starting...</div></div>");
-  
+
   // Improved JavaScript with status checking
   doc.addToBody("<script>");
-  doc.addToBody("var width = 0;");
-  doc.addToBody("var interval = setInterval(frame, 1000);"); 
-  doc.addToBody("var statusCheck = setInterval(checkUpdateStatus, 2000);");
-  
-  // Progress animation function
-  doc.addToBody("function frame() {");
-  doc.addToBody("  if (width >= 100) {");
-  doc.addToBody("    document.getElementById('update-progress').innerHTML = 'Finalizing...';");
-  doc.addToBody("  } else {");
-  doc.addToBody("    width += Math.floor(Math.random() * 5) + 1;");
-  doc.addToBody("    if(width > 100) width = 100;");
-  doc.addToBody("    document.getElementById('update-progress').style.width = width + '%';");
-  doc.addToBody("    document.getElementById('update-progress').innerHTML = 'Updating... ' + width + '%';");
-  doc.addToBody("  }");
-  doc.addToBody("}");
-  
-  // Status check function
-  doc.addToBody("function checkUpdateStatus() {");
-  doc.addToBody("  fetch('/update-status')");
+  doc.addToBody("let maxWaitTime = 10000;");
+  doc.addToBody("let startTime = Date.now();");
+  doc.addToBody("function updateProgress() {");
+  doc.addToBody("  fetch('/update-progress')");
   doc.addToBody("    .then(response => response.json())");
   doc.addToBody("    .then(data => {");
-  doc.addToBody("      if(data.complete) {");
-  doc.addToBody("        clearInterval(interval);");
-  doc.addToBody("        clearInterval(statusCheck);");
+  doc.addToBody("      let progress = Math.min(data.progress, 100);");
+  doc.addToBody("      document.getElementById('update-progress').style.width = progress + '%';");
+  doc.addToBody("      document.getElementById('update-progress').innerHTML = progress.toFixed(1) + '%';");
+  doc.addToBody("      if (progress >= 100) {");
   doc.addToBody("        window.location.href = '/update-success';");
+  doc.addToBody("      } else {");
+  doc.addToBody("        setTimeout(updateProgress, 200);");
   doc.addToBody("      }");
   doc.addToBody("    })");
-  doc.addToBody("    .catch(error => console.log('Error checking status:', error));");
+  doc.addToBody("    .catch(error => {");
+  doc.addToBody("      console.log('Error fetching progress:', error);");
+  doc.addToBody("      if (Date.now() - startTime > maxWaitTime) {");
+  doc.addToBody("        console.log('Max wait time exceeded, forcing redirect to /update-success');");
+  doc.addToBody("        window.location.href = '/update-success';");
+  doc.addToBody("      } else {");
+  doc.addToBody("        setTimeout(updateProgress, 500);");
+  doc.addToBody("      }");
+  doc.addToBody("    });");
   doc.addToBody("}");
+  doc.addToBody("updateProgress();");
   doc.addToBody("</script>");
 
   return doc.toString();
 }
 
 String getUpdateSuccessPage() {
+  if (!updateComplete) {
+    HTMLDocument doc("Update Processing");
+    doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+    doc.addToBody("<h2>Update Processing</h2>");
+    doc.addToBody("<p>Finalizing update, please wait...</p>");
+    doc.addToBody("<script>");
+    doc.addToBody("setTimeout(function() {");
+    doc.addToBody("  window.location.reload();");
+    doc.addToBody("}, 2000);");
+    doc.addToBody("</script>");
+    return doc.toString();
+  }
   HTMLDocument doc("Firmware Update Successful");
 
   doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
@@ -619,15 +640,15 @@ String getUpdateSuccessPage() {
 
   HTMLElement message("p");
   message.addAttribute("class=\"success\"")
-         .setContent("Firmware successfully updated to version " + String(firmwareVersion));
+  .setContent("Firmware successfully updated to version " + String(firmwareVersion));
   doc.addToBody(message.toString());
-  
+
   doc.addToBody("<p>The update was applied without restarting the device (for demonstration purposes).</p>");
 
   HTMLElement homeLink("a");
   homeLink.addAttribute("href=\"/\"")
-         .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
-         .setContent("Back to Home");
+  .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
+  .setContent("Back to Home");
   doc.addToBody(homeLink.toString());
 
   return doc.toString();
@@ -694,26 +715,20 @@ int doCloudGet(HTTPClient *http, String fileName) {
 
 // callback handler for tracking OTA progress ///////////////////////////////
 void handleOTAProgress(size_t done, size_t total) {
-  float progress = (float) done / (float) total;
-  // dbf(otaDBG, "OTA written %d of %d, progress = %f\n", done, total, progress);
-
+  float progress = (float)done / (float)total;
   int barWidth = 70;
   Serial.printf("[");
   int pos = barWidth * progress;
   for (int i = 0; i < barWidth; ++i) {
-    if (i < pos)
-      Serial.printf("=");
-    else if (i == pos)
-      Serial.printf(">");
-    else
-      Serial.printf(" ");
+    if (i < pos) Serial.printf("=");
+    else if (i == pos) Serial.printf(">");
+    else Serial.printf(" ");
   }
-  Serial.printf(
-    "] %d %%%c", int(progress * 100.0), (progress == 1.0) ? '\n' : '\r'
-  );
+  Serial.printf("] %d %%\r", int(progress * 100.0));
+  if (progress == 1.0) Serial.println();
 
+  otaProgress = progress * 100.0;
   digitalWrite(RED_LED, !digitalRead(RED_LED));
-  // Serial.flush();
 }
 
 void updateFirmware() {
@@ -753,53 +768,62 @@ void updateFirmware() {
 
   // write the new version of the firmware to flash
   WiFiClient stream = http.getStream();
-  Update.onProgress(handleOTAProgress); // print out progress
+  Update.onProgress(handleOTAProgress);
+  otaProgress = 0.0;
 
   if (Update.begin(updateLength, U_FLASH)) {
     Serial.printf("starting OTA may take a minute or two...\n");
 
     unsigned long startTime = millis();
     bool updateFinished = false;
-    int ledValue = LOW;
+    const size_t chunkSize = 1024;
+    uint8_t buffer[chunkSize];
 
-    while (!Update.isFinished() && !updateFinished) {
-      Update.writeStream(stream);
+    while (!updateFinished) {
+      size_t bytesAvailable = stream.available();
 
-      if (millis() - startTime >= 200) {
-        digitalWrite(RED_LED, !digitalRead(RED_LED));
-        startTime = millis();
+      if (bytesAvailable > 0) {
+        size_t bytesToRead = min(bytesAvailable, chunkSize);
+        size_t bytesRead = stream.readBytes(buffer, bytesToRead);
+        Update.write(buffer, bytesRead);
+
+        // Handle web server requests for live progress updates
+        webServer.handleClient();
+
+        // Flash red LED every 200ms
+        if (millis() - startTime >= 200) {
+          digitalWrite(RED_LED, !digitalRead(RED_LED));
+          startTime = millis();
+          webServer.handleClient();
+        }
       }
 
-      if (stream.available() == 0) {
+      if (bytesAvailable == 0 && !stream.connected()) {
         if (Update.end()) {
           Serial.printf("update done, now finishing...\n");
           Serial.flush();
-          if (Update.isFinished()) {
-            updateFinished = true;
-          }
+          updateFinished = true;
+        } else {
+          Serial.printf("Update.end() failed with error: %d\n", Update.getError());
         }
       }
+
+      webServer.handleClient();
     }
 
     digitalWrite(RED_LED, LOW);
 
     if (updateFinished) {
-      Serial.println("update successfully finished!");
-
-      // Continue flashing red LED during the 20-second wait
-      Serial.println("Waiting to complete the update experience...");
-      startTime = millis();
-      int lastToggle = startTime;
-      unsigned long waitDuration = 20000;  // 20 seconds
-      while (millis() - startTime < waitDuration) {
-        if (millis() - lastToggle  >= 200) {  // Flash every 200ms
-          digitalWrite(RED_LED, !digitalRead(RED_LED));
-          lastToggle = millis();
-        }
+      for (int i = 0; i < 10; i++) {
+        webServer.handleClient();
+        delay(500);
       }
 
-      // Turn off red LED after wait period
-      digitalWrite(RED_LED, LOW);
+      Serial.println("update successfully finished!");
+
+      firmwareVersion = highestAvailableVersion;
+      updateAvailable = false;
+      updateComplete = true;
 
       // Celebration pattern - all LEDs flash in sequence
       for (int i = 0; i < 3; i++) {
@@ -817,10 +841,6 @@ void updateFirmware() {
         delay(200);
         digitalWrite(GREEN_LED, LOW);
       }
-
-      firmwareVersion = highestAvailableVersion;
-      updateAvailable = false;
-      updateComplete = true;
 
       digitalWrite(GREEN_LED, HIGH);  // Leave green on briefly to indicate success
       delay(1000);
@@ -849,7 +869,6 @@ void updateFirmware() {
     digitalWrite(YELLOW_LED, LOW);
     Serial.flush();
   }
-
   stream.flush();
   http.end();
 }
