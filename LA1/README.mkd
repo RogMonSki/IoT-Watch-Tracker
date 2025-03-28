@@ -26,8 +26,6 @@ To build this project, you will need:
 
 ![Hardware Setup](LA1/hardware_image.png)
 
-*Note: Replace with your actual hardware photo*
-
 Connect the LEDs as follows:
 - Red LED to pin 9 (with resistor)
 - Yellow LED to pin 6 (with resistor)
@@ -97,8 +95,6 @@ Connect the LEDs as follows:
 ## Video Demonstration
 
 [Watch the demonstration video](LA1/video.mp4)
-
-*Note: Replace with your actual video link*
 
 ## LED Indicator Reference
 
