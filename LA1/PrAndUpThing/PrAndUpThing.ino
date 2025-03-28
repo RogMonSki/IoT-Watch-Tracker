@@ -292,6 +292,7 @@ void setup() {
   });
 
   webServer.on("/reset", []() {
+    delay(100);
     ESP.restart();
   });
 
@@ -812,7 +813,13 @@ void updateFirmware() {
         if (Update.end()) {
           Serial.printf("update done, now finishing...\n");
           Serial.flush();
-          updateFinished = true;
+          if (Update.isFinished()) {
+            Serial.printf("update successfully finished; preogressing...\n\n");
+             updateFinished = true;
+          } else {
+            Serial.printf("update didn't finish correctly :(\n");
+            Serial.flush();
+          }
         } else {
           Serial.printf("Update.end() failed with error: %d\n", Update.getError());
         }
