@@ -291,6 +291,10 @@ void setup() {
     webServer.send(200, "application/json", json);
   });
 
+  webServer.on("/reset", []() {
+    ESP.restart();
+  }
+
   webServer.onNotFound([]() {
     webServer.send(404, "text/plain", "Not found");
   });
@@ -650,6 +654,12 @@ String getUpdateSuccessPage() {
   .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
   .setContent("Back to Home");
   doc.addToBody(homeLink.toString());
+
+  HTMLElement resetLink("a");
+  homeLink.addAttribute("href=\"reset\"")
+  .addAttribute("style=\"display: inline-block; margin: 10px; padding: 10px; background: #0066cc; color: white; text-decoration: none; border-radius: 5px;\"")
+  .setContent("Reset Device");
+  doc.addToBody(resetLink.toString());
 
   return doc.toString();
 }
