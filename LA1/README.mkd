@@ -24,7 +24,7 @@ To build this project, you will need:
 
 ### Hardware Assembly
 
-![Hardware Setup](https://example.com/hardware-image.jpg)
+![Hardware Setup](LA1/hardware_image.png)
 
 *Note: Replace with your actual hardware photo*
 
@@ -96,7 +96,7 @@ Connect the LEDs as follows:
 
 ## Video Demonstration
 
-[Watch the demonstration video](https://example.com/video-link)
+[Watch the demonstration video](LA1/video.mp4)
 
 *Note: Replace with your actual video link*
 
