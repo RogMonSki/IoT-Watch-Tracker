@@ -1,9 +1,13 @@
 #include <Arduino.h>
 #include <LilyGoWatch.h>
+#include "drive/bma423/bma423.h"
 
 TTGOClass *ttgo;
 TFT_eSPI *tft;
 bool refreshScreen = true;
+BMA *sensor;
+uint32_t stepCount = 0;
+uint32_t lastStepCount = 0;
 
 // Colors
 #define STATUS_BAR_COLOR TFT_NAVY
@@ -32,6 +36,18 @@ void setup() {
 
     // Set proper screen rotation (2 = 180 degrees)
     tft->setRotation(0);
+
+    //Initialsie step sensor
+    sensor = ttgo->bma;
+    Acfg cfg;
+    cfg.odr = BMA4_OUTPUT_DATA_RATE_100HZ;
+    cfg.range = BMA4_ACCEL_RANGE_2G;
+    cfg.bandwidth = BMA4_ACCEL_NORMAL_AVG4;
+    cfg.perf_mode = BMA4_CONTINUOUS_MODE;
+    sensor->accelConfig(cfg);
+    sensor->enableAccel();
+    sensor->enableFeature(BMA423_STEP_CNTR, true);
+    sensor->resetStepCounter();
     
     // Initialize power management to read battery
     ttgo->power->begin();
@@ -52,6 +68,8 @@ void setup() {
 }
 
 void loop() {
+    static uint32_t lastStepCheck = 0;
+
     // Check if we need to refresh the screen
     if (refreshScreen) {
         drawStatusBar(); // Always update status bar
@@ -66,8 +84,15 @@ void loop() {
         updateTime();
     }
     
-    // Process touch events here (not implemented in this example)
-    
+    if (millis() - lastStepCheck >= 2000) {
+        lastStepCheck = millis();
+        stepCount = sensor->getCounter();
+        if (stepCount != lastStepCount) {
+        lastStepCount = stepCount;
+        refreshScreen = true;
+        }
+    }
+
     delay(50); // Short delay to avoid hogging CPU
 }
 
@@ -132,6 +157,21 @@ void drawHomeScreen() {
     char tempStr[15];
     sprintf(tempStr, "Temp: 22%cC", (char)176);  // ASCII code 176 is the degree symbol
     tft->drawString(tempStr, 30, 180);
+
+    //Text to show step count
+    tft->setTextColor(ACCENT_COLOR, BG_COLOR);
+    tft->setTextSize(2);
+    tft->fillRoundRect(SCREEN_WIDTH - 70, 155, 15, 25, 5, ACCENT_COLOR);
+    tft->fillRoundRect(SCREEN_WIDTH - 85, 170, 15, 10, 3, ACCENT_COLOR);
+    char stepStr[15];
+    sprintf(stepStr, "%d steps", stepCount);
+    tft->drawString(stepStr, SCREEN_WIDTH - 60 - tft->textWidth(stepStr), 165);
+
+    //Step count progress bar
+    #define STEP_GOAL 10000
+    int progress = min(100, (int)((stepCount * 100) / STEP_GOAL));
+    tft->drawRect(30, 210, SCREEN_WIDTH - 60, 8, TFT_DARKGREY);
+    tft->fillRect(30, 210, (SCREEN_WIDTH - 60) * progress / 100, 8, progress > 70 ? TFT_GREEN : (progress > 30 ? TFT_YELLOW : TFT_RED));
 }
 
 void updateTime() {
