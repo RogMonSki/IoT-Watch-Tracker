@@ -8,6 +8,9 @@ bool refreshScreen = true;
 BMA *sensor;
 uint32_t stepCount = 0;
 uint32_t lastStepCount = 0;
+RTC_Date currentTime;
+int currentScreen = 0;
+#define STEP_GOAL 10000
 
 // Colors
 #define STATUS_BAR_COLOR TFT_NAVY
@@ -23,7 +26,9 @@ uint32_t lastStepCount = 0;
 // Function declarations
 void drawStatusBar();
 void drawHomeScreen();
+void drawStepScreen();
 void updateTime();
+void handleTouch();
 
 void setup() {
     Serial.begin(115200);
@@ -54,15 +59,13 @@ void setup() {
     
     // Initialize RTC
     ttgo->rtc->check();
-    
-    // Check if RTC has a reasonable time (year < 2020 suggests it's not set)
-    RTC_Date currentTime = ttgo->rtc->getDateTime();
-    if (currentTime.year < 2020) {
-        ttgo->rtc->setDateTime(2025, 4, 14, 12, 0, 0);
-    }
+
+    // Set time
+    currentTime = ttgo->rtc->getDateTime();
     
     // Initial screen setup
     tft->fillScreen(BG_COLOR);
+    updateTime();
     drawStatusBar();
     drawHomeScreen();
 }
@@ -70,10 +73,20 @@ void setup() {
 void loop() {
     static uint32_t lastStepCheck = 0;
 
+    // Handle touch events for screen switching
+    handleTouch();
+
     // Check if we need to refresh the screen
     if (refreshScreen) {
         drawStatusBar(); // Always update status bar
-        drawHomeScreen();
+        
+        // Draw appropriate screen based on current selection
+        if (currentScreen == 0) {
+            drawHomeScreen();
+        } else if (currentScreen == 1) {
+            drawStepScreen();
+        }
+        
         refreshScreen = false;
     }
     
@@ -84,12 +97,12 @@ void loop() {
         updateTime();
     }
     
-    if (millis() - lastStepCheck >= 2000) {
+    if (millis() - lastStepCheck >= 1000) {
         lastStepCheck = millis();
         stepCount = sensor->getCounter();
         if (stepCount != lastStepCount) {
-        lastStepCount = stepCount;
-        refreshScreen = true;
+            lastStepCount = stepCount;
+            refreshScreen = true;
         }
     }
 
@@ -99,9 +112,6 @@ void loop() {
 void drawStatusBar() {
     // Draw status bar background
     tft->fillRect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT, STATUS_BAR_COLOR);
-    
-    // Get current time from RTC
-    RTC_Date currentTime = ttgo->rtc->getDateTime();
     
     // Format and display time
     char timeStr[9];
@@ -126,7 +136,6 @@ void drawHomeScreen() {
     tft->fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT, BG_COLOR);
     
     // Display date
-    RTC_Date currentTime = ttgo->rtc->getDateTime();
     char dateStr[20];
     sprintf(dateStr, "%04d-%02d-%02d", currentTime.year, currentTime.month, currentTime.day);
     
@@ -141,13 +150,17 @@ void drawHomeScreen() {
     tft->drawString(timeStr, 50, 90);
 
     // Draw a sun icon
-    tft->fillCircle(180, 165, 15, TFT_YELLOW);
+    int x = 185;
+    int y = 190;
+    tft->fillCircle(x, y, 13, TFT_YELLOW);
     for (int i = 0; i < 8; i++) {
         float angle = i * PI / 4;
-        int x1 = 180 + cos(angle) * 18;
-        int y1 = 165 + sin(angle) * 18;
-        int x2 = 180 + cos(angle) * 25;
-        int y2 = 165 + sin(angle) * 25;
+        int size1 = 16;
+        int size2 = 22;
+        int x1 = x + cos(angle) * size1;
+        int y1 = y + sin(angle) * size1;
+        int x2 = x + cos(angle) * size2;
+        int y2 = y + sin(angle) * size2;
         tft->drawLine(x1, y1, x2, y2, TFT_YELLOW);
     }
     
@@ -158,31 +171,100 @@ void drawHomeScreen() {
     sprintf(tempStr, "Temp: 22%cC", (char)176);  // ASCII code 176 is the degree symbol
     tft->drawString(tempStr, 30, 180);
 
-    //Text to show step count
-    tft->setTextColor(ACCENT_COLOR, BG_COLOR);
-    tft->setTextSize(2);
-    tft->fillRoundRect(SCREEN_WIDTH - 70, 155, 15, 25, 5, ACCENT_COLOR);
-    tft->fillRoundRect(SCREEN_WIDTH - 85, 170, 15, 10, 3, ACCENT_COLOR);
-    char stepStr[15];
-    sprintf(stepStr, "%d steps", stepCount);
-    tft->drawString(stepStr, SCREEN_WIDTH - 60 - tft->textWidth(stepStr), 165);
+    // Swipe prompt
+    tft->setTextColor(TFT_LIGHTGREY);
+    tft->setTextSize(1);
+    tft->drawString("Swipe left for step counter", 30, 220);
+}
 
-    //Step count progress bar
-    #define STEP_GOAL 10000
+void drawStepScreen() {
+    // Clear main screen area (leaving status bar intact)
+    tft->fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT, BG_COLOR);
+    
+    // Title
+    tft->setTextColor(ACCENT_COLOR);
+    tft->setTextSize(3);
+    const char* title = "Step Counter";
+    int approxCharWidth = 16;
+    int titleLength = strlen(title);
+    int xPos = (SCREEN_WIDTH - (titleLength * approxCharWidth)) / 2;
+    tft->drawString(title, xPos, 50);
+    
+    // Large step count
+    tft->setTextColor(TEXT_COLOR);
+    tft->setTextSize(4);
+    char largeStepStr[15];
+    sprintf(largeStepStr, "%d", stepCount);
+    int textWidth = tft->textWidth(largeStepStr);
+    tft->drawString(largeStepStr, (SCREEN_WIDTH - textWidth) / 2, 90);
+    
+    // Step icon
+    tft->fillRoundRect(70, 155, 15, 25, 5, ACCENT_COLOR);
+    tft->fillRoundRect(55, 170, 15, 10, 3, ACCENT_COLOR);
+    
+    // Steps label
+    tft->setTextSize(2);
+    tft->drawString("steps", 100, 160);
+    
+    // Goal information
+    char goalStr[20];
+    sprintf(goalStr, "Goal: %d steps", STEP_GOAL);
+    tft->drawString(goalStr, 30, 190);
+    
+    // Progress bar
     int progress = min(100, (int)((stepCount * 100) / STEP_GOAL));
-    tft->drawRect(30, 210, SCREEN_WIDTH - 60, 8, TFT_DARKGREY);
-    tft->fillRect(30, 210, (SCREEN_WIDTH - 60) * progress / 100, 8, progress > 70 ? TFT_GREEN : (progress > 30 ? TFT_YELLOW : TFT_RED));
+    tft->drawRect(30, 210, SCREEN_WIDTH - 60, 12, TFT_DARKGREY);
+    tft->fillRect(30, 210, (SCREEN_WIDTH - 60) * progress / 100, 12, 
+                  progress > 70 ? TFT_GREEN : (progress > 30 ? TFT_YELLOW : TFT_RED));
+    
+    // Progress percentage
+    char progressStr[10];
+    sprintf(progressStr, "%d%%", progress);
+    tft->setTextColor(TFT_WHITE);
+    tft->setTextSize(1);
+    tft->drawString(progressStr, SCREEN_WIDTH / 2 - 10, 211);
 }
 
 void updateTime() {
-    // This function is called every second to update the time display
-    drawStatusBar();
+    // Update the global currentTime
+    currentTime = ttgo->rtc->getDateTime();
     
-    // Update the seconds on the homescreen without redrawing everything
-    RTC_Date currentTime = ttgo->rtc->getDateTime();
+    // Update the status bar
+    drawStatusBar();
     
     // Only update the whole screen if the minute changes
     if (currentTime.second == 0) {
         refreshScreen = true;
+    }
+}
+
+void handleTouch() {
+    int16_t x, y;
+    static int16_t lastX = 0;
+    static uint32_t touchTimestamp = 0;
+    
+    if (ttgo->getTouch(x, y)) {
+        if (lastX == 0) {
+            // First touch
+            lastX = x;
+            touchTimestamp = millis();
+        } else if (millis() - touchTimestamp < 500) { // 500ms to detect a swipe
+            // If swipe distance is more than 50 pixels horizontally
+            if (x - lastX > 50) {
+                // Swipe right
+                if (currentScreen > 0) {
+                    currentScreen--;
+                    refreshScreen = true;
+                }
+            } else if (lastX - x > 50) {
+                // Swipe left
+                if (currentScreen < 1) {
+                    currentScreen++;
+                    refreshScreen = true;
+                }
+            }
+        }
+    } else {
+        lastX = 0; // Reset when touch is released
     }
 }
