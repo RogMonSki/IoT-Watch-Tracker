@@ -10,7 +10,9 @@ uint32_t stepCount = 0;
 uint32_t lastStepCount = 0;
 RTC_Date currentTime;
 int currentScreen = 0;
+bool isDisplayOn = true;
 #define STEP_GOAL 10000
+int lastIrqPinState = HIGH;
 
 // Colors
 #define STATUS_BAR_COLOR TFT_NAVY
@@ -29,18 +31,25 @@ void drawHomeScreen();
 void drawStepScreen();
 void updateTime();
 void handleTouch();
+void checkPowerButton();
 
 void setup() {
     Serial.begin(115200);
+    while (!Serial);
+    Serial.println("\n--- Starting Setup ---");
     ttgo = TTGOClass::getWatch();
+    Serial.println("1. Got Watch Instance");
     ttgo->begin();
+    Serial.println("2. ttgo->begin() finished");
     ttgo->openBL();
+    Serial.println("3. Backlight opened");
     
     // Get the display
     tft = ttgo->tft;
 
     // Set proper screen rotation (2 = 180 degrees)
     tft->setRotation(0);
+    Serial.println("4. Display setup finished");
 
     //Initialsie step sensor
     sensor = ttgo->bma;
@@ -53,24 +62,48 @@ void setup() {
     sensor->enableAccel();
     sensor->enableFeature(BMA423_STEP_CNTR, true);
     sensor->resetStepCounter();
+    Serial.println("5. Sensor setup finished");
     
     // Initialize power management to read battery
     ttgo->power->begin();
+    Serial.println("6. ttgo->power->begin() finished");
+
+    // Enable power button IRQ
+    ttgo->power->enableIRQ(AXP202_PEK_SHORTPRESS_IRQ, true);
+    Serial.println("7. Power IRQ enabled");
+    ttgo->power->clearIRQ();
+    Serial.println("8. Power IRQ cleared");
+
+    // Set the AXP IRQ pin (GPIO 35) as input with pullup
+    pinMode(AXP202_INT, INPUT_PULLUP); 
+    Serial.println("AXP IRQ Pin (GPIO 35) set to input");
     
     // Initialize RTC
     ttgo->rtc->check();
 
     // Set time
     currentTime = ttgo->rtc->getDateTime();
+    Serial.println("9. RTC setup finished");
     
     // Initial screen setup
     tft->fillScreen(BG_COLOR);
     updateTime();
     drawStatusBar();
     drawHomeScreen();
+    Serial.println("10. Initial screen drawn");
+    Serial.println("--- Setup Complete ---");
 }
 
 void loop() {
+    // Check for power button press first
+    checkPowerButton();
+
+    // Skip the rest of the loop if display is off to save power
+    if (!isDisplayOn) {
+        delay(100);  // Longer delay to save power when screen is off
+        return;
+    }
+
     static uint32_t lastStepCheck = 0;
 
     // Handle touch events for screen switching
@@ -267,4 +300,36 @@ void handleTouch() {
     } else {
         lastX = 0; // Reset when touch is released
     }
+}
+
+void checkPowerButton() {
+    int currentIrqPinState = digitalRead(AXP202_INT);
+
+    // Check if power button was pressed
+    if (lastIrqPinState == HIGH && currentIrqPinState == LOW) {
+        Serial.println("Power button press detected (Pin went LOW)");
+        
+        if (isDisplayOn) {
+            Serial.println("Turning display OFF");
+            // If display is on, turn it off
+            ttgo->displaySleep();
+            ttgo->bl->off();  // Turn off backlight
+            isDisplayOn = false;
+        } else {
+            Serial.println("Turning display ON");
+            // If display is off, turn it on
+            ttgo->displayWakeup();
+            ttgo->bl->on();  // Turn on backlight
+            isDisplayOn = true;
+            
+            // Reset to home screen
+            currentScreen = 0;
+            refreshScreen = true;
+        }
+
+        ttgo->power->clearIRQ();
+        Serial.println("Attempted to clear AXP IRQ");
+    }
+
+    lastIrqPinState = currentIrqPinState;
 }
