@@ -1,0 +1,68 @@
+#ifndef SCREENS_H
+#define SCREENS_H
+
+#include <Arduino.h>
+#include <LilyGoWatch.h>
+
+// --- Shared Libraries/Objects (Declare as extern) ---
+extern TTGOClass *ttgo;
+extern TFT_eSPI *tft;
+extern BMA *sensor;
+
+// --- Screen States Enum ---
+enum Screen {
+    HOME,
+    STEP_COUNTER,
+    SETTINGS
+};
+
+// --- Touch Gesture Enum ---
+enum TouchGesture {
+    NONE,
+    TAP,
+    SWIPE_UP,
+    SWIPE_DOWN,
+    SWIPE_LEFT,
+    SWIPE_RIGHT
+};
+
+// --- Shared Global Variables (Declare as extern) ---
+extern bool refreshScreen;
+extern uint32_t stepCount;
+extern RTC_Date currentTime;
+extern Screen currentScreen;
+extern Screen previousScreen;
+extern uint8_t currentBrightness;
+extern bool isDisplayOn; // Needed for loop logic
+
+// --- Constants ---
+#define STEP_GOAL 10000
+
+// Colors
+#define STATUS_BAR_COLOR TFT_NAVY
+#define BG_COLOR TFT_BLACK
+#define TEXT_COLOR TFT_WHITE
+#define ACCENT_COLOR TFT_ORANGE
+
+// Layout dimensions
+#define STATUS_BAR_HEIGHT 30
+#define SCREEN_WIDTH 240
+#define SCREEN_HEIGHT 240
+
+// --- Function Declarations ---
+
+// Main/Utility Functions (defined in main.cpp or elsewhere)
+void drawStatusBar();
+void updateTime();
+
+// Screen Drawing Functions (defined in their respective .cpp files)
+void drawHomeScreen();
+void drawStepScreen();
+void drawSettingsScreen();
+
+// Screen-Specific Touch Handlers (defined in their respective .cpp files)
+void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y);
+void handleStepsTouch(TouchGesture gesture, int16_t x, int16_t y);
+void handleSettingsTouch(TouchGesture gesture, int16_t x, int16_t y);
+
+#endif // SCREENS_H

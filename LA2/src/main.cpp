@@ -1,38 +1,25 @@
-#include <Arduino.h>
-#include <LilyGoWatch.h>
+#include "screens.h"
 #include "drive/bma423/bma423.h"
 
+// --- Define Global Variables (declared extern in screens.h) ---
 TTGOClass *ttgo;
 TFT_eSPI *tft;
-bool refreshScreen = true;
 BMA *sensor;
+bool refreshScreen = true;
 uint32_t stepCount = 0;
-uint32_t lastStepCount = 0;
+uint32_t lastStepCount = 0; // Keep this local to main if only used here
 RTC_Date currentTime;
-int currentScreen = 0;
+Screen currentScreen = Screen::HOME;
+Screen previousScreen = Screen::HOME;
+uint8_t currentBrightness = 255;
 bool isDisplayOn = true;
-#define STEP_GOAL 10000
-int lastIrqPinState = HIGH;
+int lastIrqPinState = HIGH; // Keep this local to main
 
-// Colors
-#define STATUS_BAR_COLOR TFT_NAVY
-#define BG_COLOR TFT_BLACK
-#define TEXT_COLOR TFT_WHITE
-#define ACCENT_COLOR TFT_ORANGE
-
-// Layout dimensions
-#define STATUS_BAR_HEIGHT 30
-#define SCREEN_WIDTH 240
-#define SCREEN_HEIGHT 240
-
-// Function declarations
-void drawStatusBar();
-void drawHomeScreen();
-void drawStepScreen();
-void updateTime();
+// --- Function Declarations for functions defined in this file ---
 void handleTouch();
 void checkPowerButton();
 
+// --- Setup Function ---
 void setup() {
     Serial.begin(115200);
     while (!Serial);
@@ -42,16 +29,15 @@ void setup() {
     ttgo->begin();
     Serial.println("2. ttgo->begin() finished");
     ttgo->openBL();
-    Serial.println("3. Backlight opened");
-    
+    ttgo->setBrightness(currentBrightness); // Use the global variable
+    Serial.println("3. Backlight opened and brightness set");
+
     // Get the display
     tft = ttgo->tft;
-
-    // Set proper screen rotation (2 = 180 degrees)
     tft->setRotation(0);
     Serial.println("4. Display setup finished");
 
-    //Initialsie step sensor
+    // Initialsie step sensor
     sensor = ttgo->bma;
     Acfg cfg;
     cfg.odr = BMA4_OUTPUT_DATA_RATE_100HZ;
@@ -63,273 +49,190 @@ void setup() {
     sensor->enableFeature(BMA423_STEP_CNTR, true);
     sensor->resetStepCounter();
     Serial.println("5. Sensor setup finished");
-    
-    // Initialize power management to read battery
+
+    // Initialize power management
     ttgo->power->begin();
     Serial.println("6. ttgo->power->begin() finished");
-
-    // Enable power button IRQ
     ttgo->power->enableIRQ(AXP202_PEK_SHORTPRESS_IRQ, true);
     Serial.println("7. Power IRQ enabled");
     ttgo->power->clearIRQ();
     Serial.println("8. Power IRQ cleared");
-
-    // Set the AXP IRQ pin (GPIO 35) as input with pullup
-    pinMode(AXP202_INT, INPUT_PULLUP); 
+    pinMode(AXP202_INT, INPUT_PULLUP);
     Serial.println("AXP IRQ Pin (GPIO 35) set to input");
-    
+
     // Initialize RTC
     ttgo->rtc->check();
-
-    // Set time
     currentTime = ttgo->rtc->getDateTime();
     Serial.println("9. RTC setup finished");
-    
+
     // Initial screen setup
     tft->fillScreen(BG_COLOR);
-    updateTime();
-    drawStatusBar();
-    drawHomeScreen();
+    updateTime(); // Update time and draw status bar initially
+    drawHomeScreen(); // Draw the initial screen
     Serial.println("10. Initial screen drawn");
     Serial.println("--- Setup Complete ---");
 }
 
+// --- Main Loop ---
 void loop() {
-    // Check for power button press first
     checkPowerButton();
 
-    // Skip the rest of the loop if display is off to save power
     if (!isDisplayOn) {
-        delay(100);  // Longer delay to save power when screen is off
+        delay(100);
         return;
     }
 
+    // Update step count periodically
     static uint32_t lastStepCheck = 0;
+    if (millis() - lastStepCheck >= 1000) {
+        lastStepCheck = millis();
+        uint32_t currentStepRead = sensor->getCounter(); // Read once
+        if (currentStepRead != stepCount) { // Compare with global stepCount
+            stepCount = currentStepRead; // Update global stepCount
+            if (currentScreen == Screen::STEP_COUNTER) { // Only refresh if on step screen
+                 refreshScreen = true;
+            }
+        }
+    }
 
-    // Handle touch events for screen switching
     handleTouch();
 
-    // Check if we need to refresh the screen
     if (refreshScreen) {
-        drawStatusBar(); // Always update status bar
-        
-        // Draw appropriate screen based on current selection
-        if (currentScreen == 0) {
-            drawHomeScreen();
-        } else if (currentScreen == 1) {
-            drawStepScreen();
+        // drawStatusBar(); // Status bar is updated in updateTime now
+        switch (currentScreen) {
+            case Screen::HOME:
+                drawHomeScreen();
+                break;
+            case Screen::STEP_COUNTER:
+                drawStepScreen();
+                break;
+            case Screen::SETTINGS:
+                drawSettingsScreen();
+                break;
         }
-        
         refreshScreen = false;
     }
-    
-    // Update time every second
+
+    // Update time every second (also updates status bar)
     static uint32_t timeUpdateMillis = 0;
-    if (millis() - timeUpdateMillis > 1000) {
+    if (millis() - timeUpdateMillis >= 1000) { // Use >= for safety
         timeUpdateMillis = millis();
         updateTime();
     }
-    
-    if (millis() - lastStepCheck >= 1000) {
-        lastStepCheck = millis();
-        stepCount = sensor->getCounter();
-        if (stepCount != lastStepCount) {
-            lastStepCount = stepCount;
-            refreshScreen = true;
-        }
-    }
 
-    delay(50); // Short delay to avoid hogging CPU
+    delay(50);
 }
 
+// --- Utility Functions ---
 void drawStatusBar() {
-    // Draw status bar background
     tft->fillRect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT, STATUS_BAR_COLOR);
-    
-    // Format and display time
     char timeStr[9];
     sprintf(timeStr, "%02d:%02d:%02d", currentTime.hour, currentTime.minute, currentTime.second);
     tft->setTextColor(TEXT_COLOR);
     tft->setTextSize(1);
     tft->drawString(timeStr, 5, 10);
-    
-    // Get and display battery percentage
     int batteryLevel = ttgo->power->getBattPercentage();
     char batteryStr[8];
     sprintf(batteryStr, "%d%%", batteryLevel);
     tft->drawString(batteryStr, SCREEN_WIDTH - 40, 10);
-    
-    // Draw battery icon (simplified)
     tft->drawRect(SCREEN_WIDTH - 20, 8, 15, 15, TEXT_COLOR);
     tft->fillRect(SCREEN_WIDTH - 18, 10, batteryLevel * 11 / 100, 11, batteryLevel > 20 ? TFT_GREEN : TFT_RED);
 }
 
-void drawHomeScreen() {
-    // Clear main screen area (leaving status bar intact)
-    tft->fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT, BG_COLOR);
-    
-    // Display date
-    char dateStr[20];
-    sprintf(dateStr, "%04d-%02d-%02d", currentTime.year, currentTime.month, currentTime.day);
-    
-    tft->setTextColor(TEXT_COLOR);
-    tft->setTextSize(2);
-    tft->drawString(dateStr, 30, 50);
-    
-    // Display current time (large)
-    char timeStr[9];
-    sprintf(timeStr, "%02d:%02d", currentTime.hour, currentTime.minute);
-    tft->setTextSize(4);
-    tft->drawString(timeStr, 50, 90);
-
-    // Draw a sun icon
-    int x = 185;
-    int y = 190;
-    tft->fillCircle(x, y, 13, TFT_YELLOW);
-    for (int i = 0; i < 8; i++) {
-        float angle = i * PI / 4;
-        int size1 = 16;
-        int size2 = 22;
-        int x1 = x + cos(angle) * size1;
-        int y1 = y + sin(angle) * size1;
-        int x2 = x + cos(angle) * size2;
-        int y2 = y + sin(angle) * size2;
-        tft->drawLine(x1, y1, x2, y2, TFT_YELLOW);
-    }
-    
-    // Simulated weather
-    tft->setTextSize(2);
-    tft->drawString("Weather: Sunny", 30, 150);
-    char tempStr[15];
-    sprintf(tempStr, "Temp: 22%cC", (char)176);  // ASCII code 176 is the degree symbol
-    tft->drawString(tempStr, 30, 180);
-
-    // Swipe prompt
-    tft->setTextColor(TFT_LIGHTGREY);
-    tft->setTextSize(1);
-    tft->drawString("Swipe left for step counter", 30, 220);
-}
-
-void drawStepScreen() {
-    // Clear main screen area (leaving status bar intact)
-    tft->fillRect(0, STATUS_BAR_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - STATUS_BAR_HEIGHT, BG_COLOR);
-    
-    // Title
-    tft->setTextColor(ACCENT_COLOR);
-    tft->setTextSize(3);
-    const char* title = "Step Counter";
-    int approxCharWidth = 16;
-    int titleLength = strlen(title);
-    int xPos = (SCREEN_WIDTH - (titleLength * approxCharWidth)) / 2;
-    tft->drawString(title, xPos, 50);
-    
-    // Large step count
-    tft->setTextColor(TEXT_COLOR);
-    tft->setTextSize(4);
-    char largeStepStr[15];
-    sprintf(largeStepStr, "%d", stepCount);
-    int textWidth = tft->textWidth(largeStepStr);
-    tft->drawString(largeStepStr, (SCREEN_WIDTH - textWidth) / 2, 90);
-    
-    // Step icon
-    tft->fillRoundRect(70, 155, 15, 25, 5, ACCENT_COLOR);
-    tft->fillRoundRect(55, 170, 15, 10, 3, ACCENT_COLOR);
-    
-    // Steps label
-    tft->setTextSize(2);
-    tft->drawString("steps", 100, 160);
-    
-    // Goal information
-    char goalStr[20];
-    sprintf(goalStr, "Goal: %d steps", STEP_GOAL);
-    tft->drawString(goalStr, 30, 190);
-    
-    // Progress bar
-    int progress = min(100, (int)((stepCount * 100) / STEP_GOAL));
-    tft->drawRect(30, 210, SCREEN_WIDTH - 60, 12, TFT_DARKGREY);
-    tft->fillRect(30, 210, (SCREEN_WIDTH - 60) * progress / 100, 12, 
-                  progress > 70 ? TFT_GREEN : (progress > 30 ? TFT_YELLOW : TFT_RED));
-    
-    // Progress percentage
-    char progressStr[10];
-    sprintf(progressStr, "%d%%", progress);
-    tft->setTextColor(TFT_WHITE);
-    tft->setTextSize(1);
-    tft->drawString(progressStr, SCREEN_WIDTH / 2 - 10, 211);
-}
-
 void updateTime() {
-    // Update the global currentTime
     currentTime = ttgo->rtc->getDateTime();
-    
-    // Update the status bar
-    drawStatusBar();
-    
-    // Only update the whole screen if the minute changes
-    if (currentTime.second == 0) {
+    drawStatusBar(); // Update status bar whenever time is updated
+    // Refresh the whole screen only if the minute changes and we are on the home screen
+    if (currentTime.second == 0 && currentScreen == Screen::HOME) {
         refreshScreen = true;
     }
 }
 
+// --- Input Handling ---
 void handleTouch() {
     int16_t x, y;
-    static int16_t lastX = 0;
-    static uint32_t touchTimestamp = 0;
-    
+    static int16_t startX = 0, startY = 0;
+    static uint32_t touchStartTime = 0;
+    static bool touchHeld = false;
+    static int16_t lastX = 0, lastY = 0; // Add variables to store last valid coordinates
+
     if (ttgo->getTouch(x, y)) {
-        if (lastX == 0) {
-            // First touch
-            lastX = x;
-            touchTimestamp = millis();
-        } else if (millis() - touchTimestamp < 500) { // 500ms to detect a swipe
-            // If swipe distance is more than 50 pixels horizontally
-            if (x - lastX > 50) {
-                // Swipe right
-                if (currentScreen > 0) {
-                    currentScreen--;
-                    refreshScreen = true;
+        if (!touchHeld) {
+            // First detection
+            startX = x;
+            startY = y;
+            touchStartTime = millis();
+            touchHeld = true;
+        }
+        // Store the latest coordinates while touch is held
+        lastX = x;
+        lastY = y;
+
+    } else { // Touch released
+        if (touchHeld) { // Process gesture only when touch is released
+            touchHeld = false;
+            uint32_t touchDuration = millis() - touchStartTime;
+            // *** Calculate delta using last known coordinates ***
+            int16_t deltaX = lastX - startX;
+            int16_t deltaY = lastY - startY;
+            TouchGesture gesture = TouchGesture::NONE;
+
+            // Determine gesture based on distance and duration
+            if (touchDuration < 500) { // Consider swipes less than 500ms
+                if (abs(deltaY) > abs(deltaX) && abs(deltaY) > 50) { // Vertical Swipe
+                    gesture = (deltaY > 0) ? TouchGesture::SWIPE_DOWN : TouchGesture::SWIPE_UP;
+                } else if (abs(deltaX) > abs(deltaY) && abs(deltaX) > 50) { // Horizontal Swipe
+                    gesture = (deltaX > 0) ? TouchGesture::SWIPE_RIGHT : TouchGesture::SWIPE_LEFT;
+                } else if (abs(deltaX) < 10 && abs(deltaY) < 10 && touchDuration < 200) { // Tap
+                    gesture = TouchGesture::TAP;
                 }
-            } else if (lastX - x > 50) {
-                // Swipe left
-                if (currentScreen < 1) {
-                    currentScreen++;
-                    refreshScreen = true;
+            }
+
+            Serial.printf("Gesture Detected: %d (dX:%d, dY:%d) on Screen: %d\n", gesture, deltaX, deltaY, currentScreen);
+
+            // Redirect based on current screen and detected gesture
+            if (gesture != TouchGesture::NONE) {
+                switch (currentScreen) {
+                    case Screen::HOME:
+                        Serial.println("Redirecting to handleHomeTouch...");
+                        handleHomeTouch(gesture, startX, startY); // Pass start coordinates for tap
+                        break;
+                    case Screen::STEP_COUNTER:
+                        Serial.println("Redirecting to handleStepsTouch...");
+                        handleStepsTouch(gesture, startX, startY);
+                        break;
+                    case Screen::SETTINGS:
+                        Serial.println("Redirecting to handleSettingsTouch...");
+                        handleSettingsTouch(gesture, startX, startY);
+                        break;
                 }
             }
         }
-    } else {
-        lastX = 0; // Reset when touch is released
+        // Reset tracking variables
+        startX = 0; startY = 0; touchStartTime = 0; lastX = 0; lastY = 0; // Reset last coordinates too
     }
 }
 
 void checkPowerButton() {
     int currentIrqPinState = digitalRead(AXP202_INT);
-
-    // Check if power button was pressed
     if (lastIrqPinState == HIGH && currentIrqPinState == LOW) {
         Serial.println("Power button press detected (Pin went LOW)");
-        
         if (isDisplayOn) {
             Serial.println("Turning display OFF");
-            // If display is on, turn it off
             ttgo->displaySleep();
-            ttgo->bl->off();  // Turn off backlight
+            ttgo->bl->off();
             isDisplayOn = false;
         } else {
             Serial.println("Turning display ON");
-            // If display is off, turn it on
             ttgo->displayWakeup();
-            ttgo->bl->on();  // Turn on backlight
+            ttgo->bl->on();
+            ttgo->setBrightness(currentBrightness); // Re-apply brightness
             isDisplayOn = true;
-            
-            // Reset to home screen
-            currentScreen = 0;
+            currentScreen = Screen::HOME;
             refreshScreen = true;
         }
-
         ttgo->power->clearIRQ();
         Serial.println("Attempted to clear AXP IRQ");
     }
-
     lastIrqPinState = currentIrqPinState;
 }
