@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 #include <LilyGoWatch.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
 // --- Shared Libraries/Objects (Declare as extern) ---
 extern TTGOClass *ttgo;
@@ -34,6 +36,11 @@ extern Screen currentScreen;
 extern Screen previousScreen;
 extern uint8_t currentBrightness;
 extern bool isDisplayOn; // Needed for loop logic
+extern bool inAPMode;
+extern bool wiFiConnected;
+extern String savedSSID;
+extern String savedPassword;
+extern WebServer webServer;
 
 // --- Constants ---
 #define STEP_GOAL 10000
@@ -54,6 +61,8 @@ extern bool isDisplayOn; // Needed for loop logic
 // Main/Utility Functions (defined in main.cpp or elsewhere)
 void drawStatusBar();
 void updateTime();
+void startAP();
+void handleWiFiConfiguration();
 
 // Screen Drawing Functions (defined in their respective .cpp files)
 void drawHomeScreen();
