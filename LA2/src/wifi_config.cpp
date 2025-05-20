@@ -4,6 +4,11 @@
 #include <SPIFFS.h>
 #include "HTMLUtilities.h"
 
+extern void setupFirebase();
+extern void syncSteps(uint32_t steps);
+extern bool firebaseSetup;
+extern uint32_t stepCount;
+
 WebServer webServer;
 bool wiFiConnected = false;
 bool inAPMode = false;
@@ -163,6 +168,10 @@ void startAP() {
         Serial.println("IP address: " + WiFi.localIP().toString());
 
         wiFiConnected = true;
+
+        setupFirebase();
+        firebaseSetup = true;
+        syncSteps(stepCount);
 
         webServer.send(200, "text/html", getConnectionSuccessPage());
       } else {
