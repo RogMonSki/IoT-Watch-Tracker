@@ -15,7 +15,8 @@ extern BMA *sensor;
 enum Screen {
     HOME,
     STEP_COUNTER,
-    SETTINGS
+    SETTINGS,
+    CALENDAR
 };
 
 // --- Touch Gesture Enum ---
@@ -41,6 +42,7 @@ extern bool wiFiConnected;
 extern String savedSSID;
 extern String savedPassword;
 extern WebServer webServer;
+extern uint32_t stepHistory[3];
 
 // --- Constants ---
 #define STEP_GOAL 10000
@@ -68,10 +70,12 @@ void handleWiFiConfiguration();
 void drawHomeScreen();
 void drawStepScreen();
 void drawSettingsScreen();
+void drawCalendarScreen();
 
 // Screen-Specific Touch Handlers (defined in their respective .cpp files)
 void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleStepsTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleSettingsTouch(TouchGesture gesture, int16_t x, int16_t y);
+void handleCalendarTouch(TouchGesture gesture, int16_t x, int16_t y);
 
 #endif // SCREENS_H
