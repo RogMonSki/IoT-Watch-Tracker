@@ -17,6 +17,7 @@ Screen previousScreen = Screen::HOME;
 uint8_t currentBrightness = 255;
 bool isDisplayOn = true;
 uint32_t stepHistory[3] = {0};
+int lastRecordedDay = -1;
 
 // --- Variables local to this file ---
 int lastIrqPinState = HIGH;
@@ -101,6 +102,9 @@ void setup() {
   Serial.printf("Today: %d steps\n", stepHistory[0]);
   Serial.printf("Yesterday: %d steps\n", stepHistory[1]);
   Serial.printf("Two days ago: %d steps\n", stepHistory[2]);
+
+  //initialise last recorded day
+  lastRecordedDay = currentTime.day;
 
   // Try to connect to saved WiFi
   if (savedSSID != "") {
@@ -258,6 +262,23 @@ void loop() {
   if (millis() - timeUpdateMillis >= 1000) {  // Use >= for safety
     timeUpdateMillis = millis();
     updateTime();
+
+    //checks if the day has changed to reset step counter
+    if (lastRecordedDay != currentTime.day) {
+      if (lastRecordedDay != -1) {
+        Serial.prinln("Day changed - STEP COUNTER RESET");
+
+        stepHistory[2] = stepHistory[1];
+        stepHistory[1] = stepHistory[0];
+        stepHistory[0] = 0;
+
+        sensor->resetStepCounter()
+        stepCount = 0;
+        stepOffset = 0;
+        refreshScreen = true;
+      }
+      lastRecordedDay = currentTime.day;
+    }
   }
 
   if (WiFi.status() == WL_CONNECTED) {
