@@ -31,7 +31,7 @@ void drawStepScreen() {
     tft->setTextColor(ACCENT_COLOR);
     tft->setTextSize(3);
     const char* title = "Step Counter";
-    int approxCharWidth = 16; // Keep simple centering for now
+    int approxCharWidth = 18; // Keep simple centering for now
     int titleLength = strlen(title);
     int xPos = (SCREEN_WIDTH - (titleLength * approxCharWidth)) / 2;
     tft->drawString(title, xPos, 50);
@@ -40,7 +40,14 @@ void drawStepScreen() {
     tft->setTextColor(TEXT_COLOR);
     tft->setTextSize(4);
     char largeStepStr[15];
-    sprintf(largeStepStr, "%d", stepCount);
+    // Format step count with commas for thousands
+    if (stepCount >= 1000) {
+        sprintf(largeStepStr, "%d,%03d",
+                stepCount / 1000,
+                stepCount % 1000);
+    } else {
+        sprintf(largeStepStr, "%d", stepCount);
+    }
     int textWidth = tft->textWidth(largeStepStr);
     tft->drawString(largeStepStr, (SCREEN_WIDTH - textWidth) / 2, 90);
 

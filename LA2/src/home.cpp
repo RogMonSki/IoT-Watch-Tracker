@@ -9,6 +9,11 @@ void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y) {
             currentScreen = Screen::STEP_COUNTER;
             refreshScreen = true;
             break;
+        case SWIPE_RIGHT:
+            Serial.println("  -> SWIPE_RIGHT detected");
+            currentScreen = Screen::CALENDAR;
+            refreshScreen = true;
+            break;
         case SWIPE_DOWN: // Enter settings
             Serial.println("  -> SWIPE_DOWN detected");
             previousScreen = Screen::HOME;
@@ -62,9 +67,4 @@ void drawHomeScreen() {
     char tempStr[15];
     sprintf(tempStr, "Temp: 22%cC", (char)176);  // ASCII code 176 is the degree symbol
     tft->drawString(tempStr, 30, 180);
-
-    // Swipe prompt
-    tft->setTextColor(TFT_LIGHTGREY);
-    tft->setTextSize(1);
-    tft->drawString("Swipe left for step counter", 30, 220);
 }

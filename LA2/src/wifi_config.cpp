@@ -24,11 +24,7 @@ String getWiFiNetworksPage() {
   HTMLElement heading("h2");
   heading.setContent("Available WiFi Networks");
 
-  HTMLElement homeLink("a");
-  homeLink.addAttribute("href=\"/\"").setContent("Back to Home");
-
   doc.addToBody(heading.toString());
-  doc.addToBody(homeLink.toString());
   doc.addToBody("<hr>");
 
   // Scan for WiFi networks
@@ -78,7 +74,7 @@ String getConnectionSuccessPage() {
   ipInfo.setContent("IP Address: " + WiFi.localIP().toString());
 
   HTMLElement homeLink("a");
-  homeLink.addAttribute("href=\"/\"").setContent("Back to Home");
+  homeLink.addAttribute("href=\"/\"").setContent("Connect to Another Network");
 
   doc.addToBody(heading.toString());
   doc.addToBody(message.toString());
@@ -104,7 +100,7 @@ String getConnectionFailurePage() {
   retryLink.addAttribute("href=\"/wifi\"").setContent("Try Again");
 
   HTMLElement homeLink("a");
-  homeLink.addAttribute("href=\"/\"").setContent("Back to Home");
+  homeLink.addAttribute("href=\"/\"").setContent("Back");
 
   doc.addToBody(heading.toString());
   doc.addToBody(message.toString());
@@ -117,7 +113,7 @@ String getConnectionFailurePage() {
 
 void startAP() {
   WiFi.mode(WIFI_AP_STA);
-  apSSID = "ESP32-" + String(ESP.getEfuseMac(), HEX);
+  apSSID = "T-Watch-Setup";
   const char *apPassword = "apples123"; 
   bool apSuccess = WiFi.softAP(apSSID.c_str(), apPassword);
   IPAddress IP = WiFi.softAPIP();

@@ -7,13 +7,16 @@ TFT_eSPI *tft;
 BMA *sensor;
 bool refreshScreen = true;
 uint32_t stepCount = 0;
-uint32_t lastStepCount = 0;  // Keep this local to main if only used here
 RTC_Date currentTime;
 Screen currentScreen = Screen::HOME;
 Screen previousScreen = Screen::HOME;
 uint8_t currentBrightness = 255;
 bool isDisplayOn = true;
-int lastIrqPinState = HIGH;  // Keep this local to main
+uint32_t stepHistory[3] = {0};
+
+// --- Variables local to this file ---
+int lastIrqPinState = HIGH;
+uint32_t stepOffset; 
 
 // --- Function Declarations for functions defined in this file ---
 void handleTouch();
@@ -22,8 +25,7 @@ void checkPowerButton();
 // --- Setup Function ---
 void setup() {
   Serial.begin(115200);
-  while (!Serial)
-    ;
+  while (!Serial);
   Serial.println("\n--- Starting Setup ---");
   ttgo = TTGOClass::getWatch();
   Serial.println("1. Got Watch Instance");
@@ -73,6 +75,19 @@ void setup() {
   Serial.println("10. Initial screen drawn");
   Serial.println("--- Setup Complete ---");
 
+  // Fill step history with random data for demonstration
+  Serial.println("Initialising random step history for demonstration");
+  randomSeed(millis());
+  // Set explicit values for each day
+  stepOffset = random(1000, 3000);      
+  stepHistory[0] = stepOffset;
+  stepHistory[1] = random(2000, 12000);
+  stepHistory[2] = random(2000, 12000);
+  // Log values for debugging
+  Serial.printf("Today: %d steps\n", stepHistory[0]);
+  Serial.printf("Yesterday: %d steps\n", stepHistory[1]);
+  Serial.printf("Two days ago: %d steps\n", stepHistory[2]);
+
   // Try to connect to saved WiFi
   if (savedSSID != "") {
     Serial.println("Connecting to WiFi...");
@@ -112,10 +127,11 @@ void loop() {
   static uint32_t lastStepCheck = 0;
   if (millis() - lastStepCheck >= 1000) {
     lastStepCheck = millis();
-    uint32_t currentStepRead = sensor->getCounter();  // Read once
-    if (currentStepRead != stepCount) {               // Compare with global stepCount
-      stepCount = currentStepRead;                    // Update global stepCount
-      if (currentScreen == Screen::STEP_COUNTER) {    // Only refresh if on step screen
+    uint32_t currentStepRead = sensor->getCounter() + stepOffset;  // Read once
+    if (currentStepRead != stepCount) {           
+      stepCount = currentStepRead;   
+      stepHistory[0] = stepCount;  
+      if (currentScreen == Screen::STEP_COUNTER || currentScreen == Screen::CALENDAR) {    // Only refresh if on step screen
         refreshScreen = true;
       }
     }
@@ -124,7 +140,6 @@ void loop() {
   handleTouch();
 
   if (refreshScreen) {
-    // drawStatusBar(); // Status bar is updated in updateTime now
     switch (currentScreen) {
       case Screen::HOME:
         drawHomeScreen();
@@ -134,6 +149,9 @@ void loop() {
         break;
       case Screen::SETTINGS:
         drawSettingsScreen();
+        break;
+      case Screen::CALENDAR:
+        drawCalendarScreen();
         break;
     }
     refreshScreen = false;
@@ -254,6 +272,9 @@ void handleTouch() {
             Serial.println("Redirecting to handleSettingsTouch...");
             handleSettingsTouch(gesture, startX, startY);
             break;
+          case Screen::CALENDAR:
+            Serial.println("Redirectign to handleCalendarTouch...");
+            handleCalendarTouch(gesture, startX, startY);
         }
       }
     }
