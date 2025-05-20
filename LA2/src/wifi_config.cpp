@@ -25,12 +25,24 @@ String getWiFiNetworksPage() {
   doc.addStyles("th { background-color: #f2f2f2; }");
   doc.addStyles("input[type=text], input[type=password] { width: 100%; padding: 8px; margin: 8px 0; }");
   doc.addStyles("input[type=submit] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }");
+  doc.addStyles(".disconnect { background-color: #f44336; }");
 
   HTMLElement heading("h2");
   heading.setContent("Available WiFi Networks");
 
   doc.addToBody(heading.toString());
   doc.addToBody("<hr>");
+
+  // Show current connection status if connected
+  if (wiFiConnected && savedSSID != "") {
+    doc.addToBody("<div style='margin-bottom: 20px; padding: 10px; background-color: #e8f5e9; border: 1px solid #c8e6c9;'>");
+    doc.addToBody("<p><strong>Currently connected to:</strong> " + savedSSID + "</p>");
+    doc.addToBody("<p><strong>IP address:</strong> " + WiFi.localIP().toString() + "</p>");
+    doc.addToBody("<form action='/disconnect' method='post'>");
+    doc.addToBody("<button type='submit' class='disconnect'>Disconnect from WiFi</button>");
+    doc.addToBody("</form>");
+    doc.addToBody("</div>");
+  }
 
   // Scan for WiFi networks
   WiFi.scanDelete();
@@ -116,6 +128,38 @@ String getConnectionFailurePage() {
   return doc.toString();
 }
 
+String getDisconnectionPage() {
+  HTMLDocument doc("Disconnected from WiFi");
+
+  doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+  doc.addStyles(".info { color: blue; font-weight: bold; }");
+
+  HTMLElement heading("h2");
+  heading.setContent("WiFi Disconnected");
+
+  HTMLElement message("p");
+  message.addAttribute("class=\"info\"").setContent("Successfully disconnected from " + savedSSID);
+
+  HTMLElement homeLink("a");
+  homeLink.addAttribute("href=\"/\"").setContent("Back to WiFi Networks");
+
+  doc.addToBody(heading.toString());
+  doc.addToBody(message.toString());
+  doc.addToBody(homeLink.toString());
+
+  return doc.toString();
+}
+
+void disconnectFromWiFi() {
+  if (wiFiConnected) {
+    WiFi.disconnect(true);
+    wiFiConnected = false;
+    Serial.println("Disconnected from WiFi network: " + savedSSID);
+    savedSSID = "";
+    savedPassword = "";
+  }
+}
+
 void startAP() {
   WiFi.mode(WIFI_AP_STA);
   apSSID = "T-Watch-Setup";
@@ -179,6 +223,11 @@ void startAP() {
     }
   });
 
+  webServer.on("/disconnect", HTTP_POST, []() {
+    String previousSSID = savedSSID;
+    disconnectFromWiFi();
+    webServer.send(200, "text/html", getDisconnectionPage());
+  });
 
   webServer.begin();
   inAPMode = true;

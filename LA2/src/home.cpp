@@ -48,7 +48,7 @@ void drawHomeScreen() {
 
     // Draw a sun icon
     int x = 185;
-    int y = 190;
+    int y = 200;
     tft->fillCircle(x, y, 13, TFT_YELLOW);
     for (int i = 0; i < 8; i++) {
         float angle = i * PI / 4;
