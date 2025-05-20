@@ -1,5 +1,9 @@
 #include "screens.h"
 #include "drive/bma423/bma423.h"
+#include "WiFi.h"
+#include <time.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 // --- Define Global Variables (declared extern in screens.h) ---
 TTGOClass *ttgo;
@@ -18,9 +22,19 @@ uint32_t stepHistory[3] = {0};
 int lastIrqPinState = HIGH;
 uint32_t stepOffset; 
 
+//Firebase things
+#define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
+bool firebaseSetup = false;
+unsigned long lastFirebaseSync = 0;
+const unsigned long FIREBASE_SYNC_INTERVAL = 60000;
+String deviceId = "";
+
 // --- Function Declarations for functions defined in this file ---
 void handleTouch();
 void checkPowerButton();
+void setupFirebase();
+void syncSteps(uint32_t steps);
+void syncNTPTime();
 
 // --- Setup Function ---
 void setup() {
@@ -106,12 +120,94 @@ void setup() {
       Serial.println(WiFi.localIP());
       inAPMode = false;
       wiFiConnected = true;
+      setupFirebase();
+      firebaseSetup = true;
+      syncSteps(stepCount);
+      lastFirebaseSync = millis();
       refreshScreen = true;
     } else {
       wiFiConnected = false;
       refreshScreen = true;
     }
   }
+}
+
+void syncNTPTime() {
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  Serial.print("Syncing time");
+  time_t now = time(nullptr);
+  int retry = 0;
+
+  while (now < 8 * 3600 * 2 && retry < 10) {
+    delay(500);
+    Serial.print(".");
+    now = time(nullptr);
+    retry++;
+  }
+
+  Serial.println();
+  struct tm timeinfo;
+  gmtime_r(&now, &timeinfo);
+  Serial.print("Time synced: ");
+  Serial.println(asctime(&timeinfo));
+}
+
+void setupFirebase() {
+  deviceId = WiFi.macAddress();
+  deviceId.replace(":", "");
+  
+  Serial.println("Setting up Firebase...");
+  Serial.println("Device ID: " + deviceId);
+  
+  syncNTPTime();
+
+  Serial.println("Firebase setup complete");
+}
+
+void syncSteps(uint32_t steps) {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected");
+    return;
+  }
+  
+  String path = "/steps/" + deviceId + ".json";
+  String url = FIREBASE_URL + path;
+  
+  //Create a JSON document
+  StaticJsonDocument<256> doc;
+  doc["steps"] = steps;
+  doc["timestamp"] = millis();
+  doc["datetime"] = String(currentTime.year) + "-" + 
+                    String(currentTime.month) + "-" + 
+                    String(currentTime.day) + " " + 
+                    String(currentTime.hour) + ":" + 
+                    String(currentTime.minute) + ":" + 
+                    String(currentTime.second);
+  
+  //Serialize JSON
+  String jsonString;
+  serializeJson(doc, jsonString);
+  
+  Serial.println("Syncing steps to Firebase at path: " + path);
+  Serial.println("JSON data: " + jsonString);
+  
+  //PUT request
+  HTTPClient http;
+  http.begin(url);
+  http.addHeader("Content-Type", "application/json");
+  int httpResponseCode = http.PUT(jsonString);
+  
+  if (httpResponseCode > 0) {
+    String response = http.getString();
+    Serial.println("Step count synced to Firebase");
+    Serial.println("HTTP Response code: " + String(httpResponseCode));
+    Serial.println("Response: " + response);
+  } else {
+    Serial.println("Failed to sync step count");
+    Serial.println("HTTP Error code: " + String(httpResponseCode));
+  }
+  
+  http.end();
 }
 
 // --- Main Loop ---
@@ -162,6 +258,19 @@ void loop() {
   if (millis() - timeUpdateMillis >= 1000) {  // Use >= for safety
     timeUpdateMillis = millis();
     updateTime();
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!firebaseSetup) {
+      setupFirebase();
+      firebaseSetup = true;
+    }
+
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastFirebaseSync >= FIREBASE_SYNC_INTERVAL) {
+      lastFirebaseSync = currentMillis;
+      syncSteps(stepCount);
+    }
   }
 
   if (inAPMode) {
