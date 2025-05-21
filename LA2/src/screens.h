@@ -16,7 +16,8 @@ enum Screen {
     HOME,
     STEP_COUNTER,
     SETTINGS,
-    CALENDAR
+    CALENDAR,
+    LEADERBOARD
 };
 
 // --- Touch Gesture Enum ---
@@ -27,6 +28,12 @@ enum TouchGesture {
     SWIPE_DOWN,
     SWIPE_LEFT,
     SWIPE_RIGHT
+};
+
+struct LeaderboardEntry {
+    String deviceId;
+    uint32_t steps;
+    String lastUpdated;
 };
 
 // --- Shared Global Variables (Declare as extern) ---
@@ -43,9 +50,12 @@ extern String savedSSID;
 extern String savedPassword;
 extern WebServer webServer;
 extern uint32_t stepHistory[3];
+extern bool leaderboardDataReady;
+extern std::vector<LeaderboardEntry> leaderboardData;
 
 // --- Constants ---
 #define STEP_GOAL 10000
+#define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
 
 // Colors
 #define STATUS_BAR_COLOR TFT_NAVY
@@ -65,17 +75,20 @@ void drawStatusBar();
 void updateTime();
 void startAP();
 void handleWiFiConfiguration();
+void fetchLeaderboardData();
 
 // Screen Drawing Functions (defined in their respective .cpp files)
 void drawHomeScreen();
 void drawStepScreen();
 void drawSettingsScreen();
 void drawCalendarScreen();
+void drawLeaderboardScreen();
 
 // Screen-Specific Touch Handlers (defined in their respective .cpp files)
 void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleStepsTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleSettingsTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleCalendarTouch(TouchGesture gesture, int16_t x, int16_t y);
+void handleLeaderboardTouch(TouchGesture gesture, int16_t x, int16_t y);
 
 #endif // SCREENS_H

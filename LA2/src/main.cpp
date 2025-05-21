@@ -24,7 +24,6 @@ int lastIrqPinState = HIGH;
 uint32_t stepOffset; 
 
 //Firebase things
-#define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
 bool firebaseSetup = false;
 unsigned long lastFirebaseSync = 0;
 const unsigned long FIREBASE_SYNC_INTERVAL = 60000;
@@ -253,6 +252,9 @@ void loop() {
       case Screen::CALENDAR:
         drawCalendarScreen();
         break;
+      case Screen::LEADERBOARD:
+        drawLeaderboardScreen();
+        break;
     }
     refreshScreen = false;
   }
@@ -266,13 +268,13 @@ void loop() {
     //checks if the day has changed to reset step counter
     if (lastRecordedDay != currentTime.day) {
       if (lastRecordedDay != -1) {
-        Serial.prinln("Day changed - STEP COUNTER RESET");
+        Serial.println("Day changed - STEP COUNTER RESET");
 
         stepHistory[2] = stepHistory[1];
         stepHistory[1] = stepHistory[0];
         stepHistory[0] = 0;
 
-        sensor->resetStepCounter()
+        sensor->resetStepCounter();
         stepCount = 0;
         stepOffset = 0;
         refreshScreen = true;
@@ -403,8 +405,13 @@ void handleTouch() {
             handleSettingsTouch(gesture, startX, startY);
             break;
           case Screen::CALENDAR:
-            Serial.println("Redirectign to handleCalendarTouch...");
+            Serial.println("Redirecting to handleCalendarTouch...");
             handleCalendarTouch(gesture, startX, startY);
+            break;
+          case Screen::LEADERBOARD:
+            Serial.println("Redirecting to handleLeaderboardTouch...");
+            handleLeaderboardTouch(gesture, startX, startY);
+            break;
         }
       }
     }

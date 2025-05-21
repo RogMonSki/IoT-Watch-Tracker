@@ -4,15 +4,17 @@
 void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y) {
     Serial.println("Inside handleHomeTouch");
     switch (gesture) {
-        case SWIPE_LEFT:
+        case SWIPE_LEFT: // Enter step counter
             Serial.println("  -> SWIPE_LEFT detected");
             currentScreen = Screen::STEP_COUNTER;
             refreshScreen = true;
+            Serial.println("Swiped Left - Entering Step Counter from Home");
             break;
-        case SWIPE_RIGHT:
+        case SWIPE_RIGHT: // Enter calendar
             Serial.println("  -> SWIPE_RIGHT detected");
             currentScreen = Screen::CALENDAR;
             refreshScreen = true;
+            Serial.println("Swiped Right - Entering Calendar from Home");
             break;
         case SWIPE_DOWN: // Enter settings
             Serial.println("  -> SWIPE_DOWN detected");
@@ -20,6 +22,13 @@ void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y) {
             currentScreen = Screen::SETTINGS;
             refreshScreen = true;
             Serial.println("Swiped Down - Entering Settings from Home");
+            break;
+        case SWIPE_UP: // Enter leaderboard
+            Serial.println("  -> SWIPE_UP detected");
+            currentScreen = Screen::LEADERBOARD;
+            refreshScreen = true;
+            fetchLeaderboardData();
+            Serial.println("Swiped Up - Entering Leaderboard from Home");
             break;
         default:
             Serial.println("  -> Other gesture detected");
