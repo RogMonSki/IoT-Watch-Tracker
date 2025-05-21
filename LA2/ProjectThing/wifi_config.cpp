@@ -225,6 +225,7 @@ void startAP() {
     webServer.on("/disconnect", HTTP_POST, []() {
         String previousSSID = savedSSID;
         disconnectFromWiFi();
+        clearWiFiCredentials();
         webServer.send(200, "text/html", getDisconnectionPage());
     });
 
