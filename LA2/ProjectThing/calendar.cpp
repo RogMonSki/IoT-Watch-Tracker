@@ -70,12 +70,12 @@ void drawCalendarScreen() {
         sprintf(dayLabel, "%d/%d/%d:", displayDay, displayMonth, displayYear % 100);
         
         // Format step count with commas for thousands
-        if (stepHistory[i] >= 1000) {
+        if (stepHistory[i].steps >= 1000) {
             sprintf(stepData, "%d,%03d", 
-                    stepHistory[i] / 1000, 
-                    stepHistory[i] % 1000);
+                    stepHistory[i].steps / 1000, 
+                    stepHistory[i].steps % 1000);
         } else {
-            sprintf(stepData, "%d", stepHistory[i]);
+            sprintf(stepData, "%d", stepHistory[i].steps);
         }
         
         // Draw calendar entry
@@ -83,7 +83,7 @@ void drawCalendarScreen() {
         tft->drawString(stepData, 160, yPos);
         
         // Create progress indicator based on goal
-        int progress = min(100, (int)((stepHistory[i] * 100) / STEP_GOAL));
+        int progress = min(100, (int)((stepHistory[i].steps * 100) / STEP_GOAL));
         int barWidth = 180;
         tft->drawRect(30, yPos + 25, barWidth, 8, TFT_DARKGREY);
         tft->fillRect(30, yPos + 25, barWidth * progress / 100, 8,

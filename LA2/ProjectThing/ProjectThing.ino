@@ -15,17 +15,20 @@ Screen currentScreen = Screen::HOME;
 Screen previousScreen = Screen::HOME;
 uint8_t currentBrightness = 255;
 bool isDisplayOn = true;
-uint32_t stepHistory[3] = {0};
+StepRecord stepHistory[3] = { {"", 0}, {"", 0}, {"", 0} };
 int lastRecordedDay = -1;
 
 // --- Variables local to this file ---
 int lastIrqPinState = HIGH;
+uint32_t stepCountOffset = 0;
 
 //Firebase things
 bool firebaseSetup = false;
 unsigned long lastFirebaseSync = 0;
 const unsigned long FIREBASE_SYNC_INTERVAL = 60000;
 String deviceId = "";
+
+static uint32_t lastStepSaveTime = 0;
 
 // --- Function Declarations for functions defined in this file ---
 void handleTouch();
@@ -44,6 +47,9 @@ void setup() {
         //try to load saved WiFi credentials
         if (loadWiFiCredentials()) {
             Serial.println("WiFi credentials loaded successfully");
+        }
+        if (loadStepHistory()) {
+            Serial.println("Step history loaded successfully");
         }
     }
     Serial.println("\n--- Starting Setup ---");
@@ -70,7 +76,9 @@ void setup() {
     sensor->accelConfig(cfg);
     sensor->enableAccel();
     sensor->enableFeature(BMA423_STEP_CNTR, true);
-    sensor->resetStepCounter();
+    if (stepHistory[0].steps == 0) {
+        sensor->resetStepCounter();
+    }
     Serial.println("5. Sensor setup finished");
 
     // Initialize power management
@@ -95,17 +103,30 @@ void setup() {
     Serial.println("10. Initial screen drawn");
     Serial.println("--- Setup Complete ---");
 
-    // Fill step history with random data for demonstration
-    Serial.println("Initialising random step history for demonstration");
-    randomSeed(millis());
-    // Set explicit values for each day
-    stepHistory[0] = 0;
-    stepHistory[1] = random(2000, 12000);
-    stepHistory[2] = random(2000, 12000);
-    // Log values for debugging
-    Serial.printf("Today: %d steps\n", stepHistory[0]);
-    Serial.printf("Yesterday: %d steps\n", stepHistory[1]);
-    Serial.printf("Two days ago: %d steps\n", stepHistory[2]);
+    // Fill step history with data
+    if (!loadStepHistory()) {
+        Serial.println("Generating default step history");
+        randomSeed(millis());
+        String todayDateStr = String(currentTime.year) + "-" + String(currentTime.month) + "-" + String(currentTime.day);
+        stepHistory[0] = { todayDateStr, 0 };
+        stepHistory[1] = { "", random(2000, 12000) };
+        stepHistory[2] = { "", random(2000, 12000) };
+        saveStepHistory();
+    }
+
+    Serial.println("Current step history:");
+    for (int i = 0; i < 3; i++) {
+        Serial.printf("Day %d: %s - %d steps\n", i, stepHistory[i].date.c_str(), stepHistory[i].steps);
+    }
+    
+    uint32_t sensorSteps = sensor->getCounter();
+    stepCount = stepHistory[0].steps;
+
+    if (sensorSteps < stepCount) {
+        stepCountOffset = stepCount - sensorSteps;
+        Serial.printf("Applied step offset: %d (History: %d, Sensor: %d)\n", 
+                    stepCountOffset, stepCount, sensorSteps);
+    }
 
     //initialise last recorded day
     lastRecordedDay = currentTime.day;
@@ -173,6 +194,11 @@ void setupFirebase() {
 }
 
 void syncSteps(uint32_t steps) {
+    if (steps == 0 && stepHistory[0].steps > 0) {
+        Serial.println("Warning: Preventing sync of zero steps when history has non-zero steps");
+        steps = stepHistory[0].steps;
+    }
+
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("WiFi not connected");
         return;
@@ -231,10 +257,12 @@ void loop() {
     static uint32_t lastStepCheck = 0;
     if (millis() - lastStepCheck >= 1000) {
         lastStepCheck = millis();
-        uint32_t currentStepRead = sensor->getCounter();  // Read once
+        uint32_t sensorSteps = sensor->getCounter();
+        uint32_t currentStepRead = sensorSteps + stepCountOffset;  // Add offset
+
         if (currentStepRead != stepCount) {           
             stepCount = currentStepRead;   
-            stepHistory[0] = stepCount;  
+            stepHistory[0].steps = stepCount;  
             if (currentScreen == Screen::STEP_COUNTER || currentScreen == Screen::CALENDAR) {    // Only refresh if on step screen
                 refreshScreen = true;
             }
@@ -280,12 +308,19 @@ void loop() {
             if (lastRecordedDay != -1) {
                 Serial.println("Day changed - STEP COUNTER RESET");
 
+                String todayDateStr = String(currentTime.year) + "-" + String(currentTime.month) + "-" + String(currentTime.day);
+
                 stepHistory[2] = stepHistory[1];
                 stepHistory[1] = stepHistory[0];
-                stepHistory[0] = 0;
+
+                stepHistory[0].date = todayDateStr;
+                stepHistory[0].steps = 0;
+
+                saveStepHistory();
 
                 sensor->resetStepCounter();
                 stepCount = 0;
+                stepCountOffset = 0;
                 refreshScreen = true;
             }
             lastRecordedDay = currentTime.day;
@@ -307,6 +342,12 @@ void loop() {
 
     if (inAPMode) {
         webServer.handleClient();
+    }
+
+    if (millis() - lastStepSaveTime >= 60000) {
+        lastStepSaveTime = millis();
+        saveStepHistory();
+        Serial.println("Periodically saving step data");
     }
 
     delay(50);

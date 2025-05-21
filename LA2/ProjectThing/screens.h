@@ -36,6 +36,11 @@ struct LeaderboardEntry {
     String lastUpdated;
 };
 
+struct StepRecord {
+    String date;
+    uint32_t steps;
+};
+
 // --- Shared Global Variables (Declare as extern) ---
 extern bool refreshScreen;
 extern uint32_t stepCount;
@@ -49,7 +54,7 @@ extern bool wiFiConnected;
 extern String savedSSID;
 extern String savedPassword;
 extern WebServer webServer;
-extern uint32_t stepHistory[3];
+extern StepRecord stepHistory[3];
 extern bool leaderboardDataReady;
 extern std::vector<LeaderboardEntry> leaderboardData;
 extern unsigned long lastLeaderboardUpdate;
@@ -98,5 +103,7 @@ bool initStorage();
 void saveWiFiCredentials();
 bool loadWiFiCredentials();
 void clearWiFiCredentials();
+bool loadStepHistory();
+void saveStepHistory();
 
 #endif // SCREENS_H
