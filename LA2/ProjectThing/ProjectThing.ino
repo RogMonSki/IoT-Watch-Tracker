@@ -254,6 +254,11 @@ void loop() {
                 break;
         }
         refreshScreen = false;
+
+        if (currentScreen == Screen::LEADERBOARD && !leaderboardDataReady &&
+            WiFi.status() == WL_CONNECTED && millis() - lastLeaderboardUpdate >= LEADERBOARD_UPDATE_INTERVAL) {
+                fetchLeaderboardData();
+            }
     }
 
     // Update time every second (also updates status bar)

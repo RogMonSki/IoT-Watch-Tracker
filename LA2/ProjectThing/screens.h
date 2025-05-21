@@ -52,10 +52,12 @@ extern WebServer webServer;
 extern uint32_t stepHistory[3];
 extern bool leaderboardDataReady;
 extern std::vector<LeaderboardEntry> leaderboardData;
+extern unsigned long lastLeaderboardUpdate;
 
 // --- Constants ---
 #define STEP_GOAL 10000
 #define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
+#define LEADERBOARD_UPDATE_INTERVAL 60000 // 1 minute
 
 // Colours
 #define STATUS_BAR_COLOR TFT_NAVY

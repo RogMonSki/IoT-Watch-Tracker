@@ -27,7 +27,6 @@ void handleHomeTouch(TouchGesture gesture, int16_t x, int16_t y) {
             Serial.println("  -> SWIPE_UP detected");
             currentScreen = Screen::LEADERBOARD;
             refreshScreen = true;
-            fetchLeaderboardData();
             Serial.println("Swiped Up - Entering Leaderboard from Home");
             break;
         default:

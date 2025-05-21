@@ -7,7 +7,6 @@
 std::vector<LeaderboardEntry> leaderboardData;
 bool leaderboardDataReady = false;
 unsigned long lastLeaderboardUpdate = 0;
-const unsigned long LEADERBOARD_UPDATE_INTERVAL = 60000; // 1 minute
 
 void handleLeaderboardTouch(TouchGesture gesture, int16_t x, int16_t y) {
     switch (gesture) {
@@ -88,6 +87,10 @@ void fetchLeaderboardData() {
     }
     
     http.end();
+
+    if (currentScreen == Screen::LEADERBOARD) {
+        refreshScreen = true;
+    }
 }
 
 void drawLeaderboardScreen() {
