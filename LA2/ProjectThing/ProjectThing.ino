@@ -1,6 +1,5 @@
 #include "screens.h"
 #include "drive/bma423/bma423.h"
-#include "WiFi.h"
 #include <time.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>

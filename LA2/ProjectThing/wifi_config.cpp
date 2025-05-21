@@ -1,6 +1,4 @@
 #include "screens.h"
-#include <WiFi.h>
-#include <WebServer.h>
 #include <SPIFFS.h>
 #include "HTMLUtilities.h"
 

@@ -126,7 +126,7 @@ void drawLeaderboardScreen() {
     tft->drawString(lastUpdate, 40, STATUS_BAR_HEIGHT + 40);
     
     // Add instructions
-    tft->drawString("Tap to refresh", 110, SCREEN_HEIGHT - 20);
+    tft->drawString("Tap to refresh", 120, SCREEN_HEIGHT - 20);
 
     // Find current device in the leaderboard
     String currentDeviceId = WiFi.macAddress();
