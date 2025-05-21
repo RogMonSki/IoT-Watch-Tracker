@@ -21,7 +21,6 @@ int lastRecordedDay = -1;
 
 // --- Variables local to this file ---
 int lastIrqPinState = HIGH;
-uint32_t stepOffset; 
 
 //Firebase things
 bool firebaseSetup = false;
@@ -93,8 +92,7 @@ void setup() {
   Serial.println("Initialising random step history for demonstration");
   randomSeed(millis());
   // Set explicit values for each day
-  stepOffset = random(1000, 3000);      
-  stepHistory[0] = stepOffset;
+  stepHistory[0] = 0;
   stepHistory[1] = random(2000, 12000);
   stepHistory[2] = random(2000, 12000);
   // Log values for debugging
@@ -226,7 +224,7 @@ void loop() {
   static uint32_t lastStepCheck = 0;
   if (millis() - lastStepCheck >= 1000) {
     lastStepCheck = millis();
-    uint32_t currentStepRead = sensor->getCounter() + stepOffset;  // Read once
+    uint32_t currentStepRead = sensor->getCounter();  // Read once
     if (currentStepRead != stepCount) {           
       stepCount = currentStepRead;   
       stepHistory[0] = stepCount;  
@@ -276,7 +274,6 @@ void loop() {
 
         sensor->resetStepCounter();
         stepCount = 0;
-        stepOffset = 0;
         refreshScreen = true;
       }
       lastRecordedDay = currentTime.day;
