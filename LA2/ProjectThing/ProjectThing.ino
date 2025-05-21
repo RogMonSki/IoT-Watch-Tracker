@@ -127,7 +127,7 @@ void setup() {
                     stepCountOffset, stepCount, sensorSteps);
     }
 
-    //initialise last recorded day
+    // Initialise last recorded day
     lastRecordedDay = currentTime.day;
 
     // Try to connect to saved WiFi
@@ -154,6 +154,7 @@ void setup() {
             lastFirebaseSync = millis();
             refreshScreen = true;
         } else {
+            Serial.println("Couldn't connect to WiFi network");
             wiFiConnected = false;
             refreshScreen = true;
         }
