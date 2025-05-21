@@ -159,7 +159,14 @@ void disconnectFromWiFi() {
 }
 
 void startAP() {
+    //Ensure WiFi is in a clean state
+    WiFi.disconnect(true);
+    delay(100);
+    
+    //Set WiFi mode 
     WiFi.mode(WIFI_AP_STA);
+    delay(100);
+    
     apSSID = "T-Watch-Setup";
     const char *apPassword = "apples123"; 
     bool apSuccess = WiFi.softAP(apSSID.c_str(), apPassword);
