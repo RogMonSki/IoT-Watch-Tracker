@@ -97,7 +97,7 @@ void drawLeaderboardScreen() {
     // Draw header
     tft->setTextColor(ACCENT_COLOR);
     tft->setTextSize(2);
-    tft->drawString("Step Leaderboard", 30, STATUS_BAR_HEIGHT + 10);
+    tft->drawString("Step Leaderboard", 28, STATUS_BAR_HEIGHT + 10);
     
     // Draw line under header
     tft->drawLine(20, STATUS_BAR_HEIGHT + 35, SCREEN_WIDTH - 20, STATUS_BAR_HEIGHT + 35, TEXT_COLOR);
@@ -126,62 +126,12 @@ void drawLeaderboardScreen() {
     tft->drawString(lastUpdate, 40, STATUS_BAR_HEIGHT + 40);
     
     // Add instructions
-    tft->drawString("Tap to refresh", 70, SCREEN_HEIGHT - 20);
-    
-    // Display top entries
-    int y = STATUS_BAR_HEIGHT + 60;
-    int maxDisplay = min(3, (int)leaderboardData.size()); // Show up to 3 entries
-    
-    if (maxDisplay == 0) {
-        tft->setTextColor(TEXT_COLOR);
-        tft->setTextSize(1);
-        tft->drawString("No data available", 60, y);
-        return;
-    }
-    
-    // Show each entry
-    for (int i = 0; i < maxDisplay; i++) {
-        // Draw medal
-        if (i == 0) {
-            // Gold
-            tft->fillCircle(30, y + 10, 10, TFT_YELLOW);
-            tft->drawString("1", 27, y + 6);
-        } else if (i == 1) {
-            // Silver
-            tft->fillCircle(30, y + 10, 10, TFT_LIGHTGREY);
-            tft->drawString("2", 27, y + 6);
-        } else {
-            // Bronze
-            tft->fillCircle(30, y + 10, 10, TFT_ORANGE);
-            tft->drawString("3", 27, y + 6);
-        }
-        
-        // Draw info
-        tft->setTextColor(TEXT_COLOR);
-        tft->setTextSize(2);
-        tft->drawString(leaderboardData[i].deviceId, 50, y);
-        
-        char steps[20];
-        sprintf(steps, "%lu steps", leaderboardData[i].steps);
-        tft->setTextSize(1);
-        tft->drawString(steps, 50, y + 25);
-        
-        // Draw horizontal separator
-        if (i < maxDisplay - 1) {
-            tft->drawLine(50, y + 40, SCREEN_WIDTH - 30, y + 40, TFT_DARKGREY);
-        }
-        
-        y += 50; // Move to next entry position
-    }
-    
-    // Show your position
-    tft->setTextColor(TFT_LIGHTGREY);
-    tft->setTextSize(1);
-    
+    tft->drawString("Tap to refresh", 110, SCREEN_HEIGHT - 20);
+
     // Find current device in the leaderboard
     String currentDeviceId = WiFi.macAddress();
     currentDeviceId.replace(":", "");
-    
+
     int position = -1;
     for (size_t i = 0; i < leaderboardData.size(); i++) {
         // Check if the shortened ID matches the end of the device ID
@@ -191,9 +141,85 @@ void drawLeaderboardScreen() {
         }
     }
     
-    if (position > 0) {
-        char yourPosition[40];
-        sprintf(yourPosition, "Your Position: %d of %d", position, (int)leaderboardData.size());
-        tft->drawString(yourPosition, 40, SCREEN_HEIGHT - 40);
+    // Display top entries
+    int y = STATUS_BAR_HEIGHT + 60;
+    int totalEntries = min(3, (int)leaderboardData.size()); // Show up to 3 entries
+    
+    if (totalEntries == 0) {
+        tft->setTextColor(TEXT_COLOR);
+        tft->setTextSize(1);
+        tft->drawString("No data available", 60, y);
+        return;
+    }
+    
+    // Show each entry
+    for (int i = 0; i < min(2, totalEntries); i++) {
+        // Draw medal
+        if (i == 0) {
+            // Gold
+            tft->fillCircle(30, y + 10, 10, TFT_YELLOW);
+            tft->drawString("1", 27, y + 6);
+        } else if (i == 1) {
+            // Silver
+            tft->fillCircle(30, y + 10, 10, TFT_LIGHTGREY);
+            tft->drawString("2", 27, y + 6);
+        }
+        
+        // Set text color - highlight if this is the user's position
+        if (position == i + 1) {
+            tft->setTextColor(TFT_CYAN); // Highlight user's position
+        } else {
+            tft->setTextColor(TEXT_COLOR);
+        }
+
+        tft->setTextSize(2);
+        tft->drawString(leaderboardData[i].deviceId, 50, y);
+        
+        char steps[20];
+        sprintf(steps, "%lu steps", leaderboardData[i].steps);
+        tft->setTextSize(1);
+        tft->drawString(steps, 50, y + 25);
+        
+        // Draw horizontal separator
+        tft->drawLine(50, y + 40, SCREEN_WIDTH - 30, y + 40, TFT_DARKGREY);
+        
+        y += 50; // Move to next entry position
+    }
+    
+    if (totalEntries >= 3) {
+        int thirdDisplayIndex;
+        int thirdDisplayPosition;
+
+        if (position > 2 && position > 0) {
+            // Show user's position in the third slot
+            thirdDisplayIndex = position - 1; // Convert to 0-based index
+            thirdDisplayPosition = position;
+        } else {
+            // Show the actual 3rd position
+            thirdDisplayIndex = 2;
+            thirdDisplayPosition = 3;
+        }
+
+        // Draw medal or position number
+        tft->fillCircle(30, y + 10, 10, TFT_ORANGE);
+
+        char posStr[3];
+        sprintf(posStr, "%d", thirdDisplayPosition);
+        tft->drawString(posStr, 27, y + 6);
+
+        // Highlight the row if it's your position
+        if (position == thirdDisplayPosition) {
+            tft->setTextColor(TFT_CYAN); // Highlight colour
+        } else {
+            tft->setTextColor(TEXT_COLOR);
+        }
+
+        tft->setTextSize(2);
+        tft->drawString(leaderboardData[thirdDisplayIndex].deviceId, 50, y);
+
+        char steps[20];
+        sprintf(steps, "%lu steps", leaderboardData[thirdDisplayIndex].steps);
+        tft->setTextSize(1);
+        tft->drawString(steps, 50, y + 25);
     }
 }
