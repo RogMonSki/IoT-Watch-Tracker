@@ -97,5 +97,6 @@ void handleLeaderboardTouch(TouchGesture gesture, int16_t x, int16_t y);
 bool initStorage();
 void saveWiFiCredentials();
 bool loadWiFiCredentials();
+void clearWiFiCredentials();
 
 #endif // SCREENS_H

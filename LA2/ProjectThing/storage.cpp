@@ -72,3 +72,15 @@ bool loadWiFiCredentials() {
     return success;
 }
 
+void clearWiFiCredentials() {
+    if (SPIFFS.exists(SSID_FILE)) {
+        SPIFFS.remove(SSID_FILE);
+        Serial.println("SSID file removed");
+    }
+    
+    if (SPIFFS.exists(PASSWORD_FILE)) {
+        SPIFFS.remove(PASSWORD_FILE);
+        Serial.println("Password file removed");
+    }
+}
+
