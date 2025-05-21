@@ -2,6 +2,7 @@
 #define SCREENS_H
 
 #include <Arduino.h>
+#include "config.h"
 #include <LilyGoWatch.h>
 #include <WiFi.h>
 #include <WebServer.h>
