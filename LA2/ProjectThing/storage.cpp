@@ -68,6 +68,10 @@ bool loadWiFiCredentials() {
         Serial.println("Password file not found");
         success = false;  //file doesn't exist
     }
+
+    if (success) {
+        wiFiConnected = true;
+    }
     
     return success;
 }

@@ -33,9 +33,15 @@ void fetchLeaderboardData() {
     }
     
     Serial.println("Fetching leaderboard data...");
+
+    // Force a sync first
+    syncSteps(stepCount);
     
     // Reset flag
     leaderboardDataReady = false;
+
+    // Small delay to allow step sync to complete
+    delay(500);
     
     HTTPClient http;
     String url = String(FIREBASE_URL) + "/steps.json";
@@ -100,7 +106,7 @@ void drawLeaderboardScreen() {
     // Draw header
     tft->setTextColor(ACCENT_COLOR);
     tft->setTextSize(2);
-    tft->drawString("Step Leaderboard", 28, STATUS_BAR_HEIGHT + 10);
+    tft->drawString("Step Leaderboard", 25, STATUS_BAR_HEIGHT + 10);
     
     // Draw line under header
     tft->drawLine(20, STATUS_BAR_HEIGHT + 35, SCREEN_WIDTH - 20, STATUS_BAR_HEIGHT + 35, TEXT_COLOR);
@@ -129,7 +135,7 @@ void drawLeaderboardScreen() {
     tft->drawString(lastUpdate, 40, STATUS_BAR_HEIGHT + 40);
     
     // Add instructions
-    tft->drawString("Tap to refresh", 120, SCREEN_HEIGHT - 20);
+    tft->drawString("Tap to refresh", 140, SCREEN_HEIGHT - 20);
 
     // Find current device in the leaderboard
     String currentDeviceId = WiFi.macAddress();
@@ -224,5 +230,24 @@ void drawLeaderboardScreen() {
         sprintf(steps, "%lu steps", leaderboardData[thirdDisplayIndex].steps);
         tft->setTextSize(1);
         tft->drawString(steps, 50, y + 25);
+    }
+}
+
+void updateLeaderboardTimer() {
+    if (currentScreen == Screen::LEADERBOARD && leaderboardDataReady) {
+        // Only update the timer text every 10 seconds
+        unsigned long secsSinceUpdate = (millis() - lastLeaderboardUpdate) / 1000;
+        if (secsSinceUpdate % 10 == 0 || secsSinceUpdate < 10) {
+            // Clear the previous timer text
+            tft->fillRect(40, STATUS_BAR_HEIGHT + 40, 160, 10, BG_COLOR);
+            
+            // Display when the data was last updated
+            tft->setTextSize(1);
+            tft->setTextColor(TFT_LIGHTGREY);
+            char lastUpdate[40];
+            unsigned long secsSinceUpdate = (millis() - lastLeaderboardUpdate) / 1000;
+            sprintf(lastUpdate, "Updated %lu seconds ago", secsSinceUpdate);
+            tft->drawString(lastUpdate, 40, STATUS_BAR_HEIGHT + 40);
+        }
     }
 }
