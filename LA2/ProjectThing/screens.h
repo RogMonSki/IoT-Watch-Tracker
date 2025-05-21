@@ -92,4 +92,9 @@ void handleSettingsTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleCalendarTouch(TouchGesture gesture, int16_t x, int16_t y);
 void handleLeaderboardTouch(TouchGesture gesture, int16_t x, int16_t y);
 
+//Storage Functions
+bool initStorage();
+void saveWiFiCredentials();
+bool loadWiFiCredentials();
+
 #endif // SCREENS_H

@@ -14,5 +14,3 @@
 #define LILYGO_WATCH_LVGL                   //To use LVGL, you need to enable the macro LVGL
 
 #include <LilyGoWatch.h>
-
-
