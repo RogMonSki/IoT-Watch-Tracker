@@ -38,6 +38,14 @@ void syncNTPTime();
 void setup() {
     Serial.begin(115200);
     while (!Serial);
+    //initialize SPIFFS
+    if (initStorage()) {
+        Serial.println("Storage system initialized");
+        //try to load saved WiFi credentials
+        if (loadWiFiCredentials()) {
+            Serial.println("WiFi credentials loaded successfully");
+        }
+    }
     Serial.println("\n--- Starting Setup ---");
     ttgo = TTGOClass::getWatch();
     Serial.println("1. Got Watch Instance");

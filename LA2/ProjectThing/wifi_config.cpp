@@ -202,6 +202,7 @@ void startAP() {
             if (WiFi.status() == WL_CONNECTED) {
                 savedSSID = ssid;
                 savedPassword = password;
+                saveWiFiCredentials();
                 Serial.println("\nConnected to WiFi network: " + ssid);
                 Serial.println("IP address: " + WiFi.localIP().toString());
 
