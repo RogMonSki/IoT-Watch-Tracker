@@ -44,10 +44,14 @@ String getWiFiNetworksPage() {
 
     // Scan for WiFi networks
     WiFi.scanDelete();
-    delay(100);
-    int numNetworks = WiFi.scanNetworks();
-    if (numNetworks == 0) {
+    delay(500);
+    Serial.println("Starting WiFi scan...");
+    int numNetworks = WiFi.scanNetworks(false, true);
+    Serial.printf("WiFi scan complete. Found %d networks\n", numNetworks);
+
+    if (numNetworks <= 0) {
         doc.addToBody("<p>No WiFi networks found</p>");
+        Serial.println("No networks found or scan error");
     } else {
         doc.addToBody("<form action=\"/connect\" method=\"post\">");
         doc.addToBody("<table>");
@@ -56,6 +60,8 @@ String getWiFiNetworksPage() {
         for (int i = 0; i < numNetworks; i++) {
             String ssid = WiFi.SSID(i);
             int rssi = WiFi.RSSI(i);
+
+            Serial.printf("Network %d: %s (RSSI: %d)\n", i+1, ssid.c_str(), rssi);
 
             String row = "<tr><td><input type=\"radio\" name=\"ssid\" value=\"" + ssid + "\" required></td>";
             row += "<td>" + ssid + "</td>";
@@ -159,6 +165,11 @@ void disconnectFromWiFi() {
 }
 
 void startAP() {
+    // Full WiFi reset
+    disconnectFromWiFi();
+    clearWiFiCredentials();
+    delay(500);
+
     WiFi.mode(WIFI_AP_STA);
     apSSID = "T-Watch-Setup";
     const char *apPassword = "apples123"; 
