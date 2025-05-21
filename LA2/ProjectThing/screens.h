@@ -3,7 +3,6 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include <LilyGoWatch.h>
 #include <WiFi.h>
 #include <WebServer.h>
 
@@ -58,7 +57,7 @@ extern std::vector<LeaderboardEntry> leaderboardData;
 #define STEP_GOAL 10000
 #define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
 
-// Colors
+// Colours
 #define STATUS_BAR_COLOR TFT_NAVY
 #define BG_COLOR TFT_BLACK
 #define TEXT_COLOR TFT_WHITE
