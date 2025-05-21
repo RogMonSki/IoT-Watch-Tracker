@@ -83,6 +83,8 @@ void updateTime();
 void startAP();
 void handleWiFiConfiguration();
 void fetchLeaderboardData();
+void syncSteps(uint32_t steps);
+void updateLeaderboardTimer();
 
 // Screen Drawing Functions (defined in their respective .cpp files)
 void drawHomeScreen();

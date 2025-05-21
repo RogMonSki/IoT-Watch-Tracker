@@ -34,7 +34,6 @@ static uint32_t lastStepSaveTime = 0;
 void handleTouch();
 void checkPowerButton();
 void setupFirebase();
-void syncSteps(uint32_t steps);
 void syncNTPTime();
 
 // --- Setup Function ---
@@ -291,10 +290,9 @@ void loop() {
         }
         refreshScreen = false;
 
-        if (currentScreen == Screen::LEADERBOARD && !leaderboardDataReady &&
-            WiFi.status() == WL_CONNECTED && millis() - lastLeaderboardUpdate >= LEADERBOARD_UPDATE_INTERVAL) {
-                fetchLeaderboardData();
-            }
+        if (currentScreen == Screen::LEADERBOARD && !leaderboardDataReady && WiFi.status() == WL_CONNECTED) {
+            fetchLeaderboardData();
+        }
     }
 
     // Update time every second (also updates status bar)
@@ -302,6 +300,11 @@ void loop() {
     if (millis() - timeUpdateMillis >= 1000) {  // Use >= for safety
         timeUpdateMillis = millis();
         updateTime();
+
+        // Update leaderboard timer if we're on that screen
+        if (currentScreen == Screen::LEADERBOARD) {
+            updateLeaderboardTimer();
+        }
 
         //checks if the day has changed to reset step counter
         if (lastRecordedDay != currentTime.day) {
