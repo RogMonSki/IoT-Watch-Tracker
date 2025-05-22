@@ -7,6 +7,7 @@
 #define SSID_FILE "/ssid.txt" //wifi ssid
 #define PASSWORD_FILE "/password.txt" //wifi password
 #define STEP_HISTORY_FILE "/steps.json"
+#define USERNAME_FILE "/username.txt"
 
 //initialise SPIFFS storage
 bool initStorage() {
@@ -149,3 +150,33 @@ void clearWiFiCredentials() {
     }
 }
 
+void saveUsername() {
+    fs::File usernameFile = SPIFFS.open(USERNAME_FILE, "w");
+    if (usernameFile) {
+        usernameFile.print(savedUsername);
+        usernameFile.close();
+        Serial.println("Username saved to SPIFFS");
+    } else {
+        Serial.println("Failed to open Username file for writing");
+    }
+}
+
+bool loadUsername() {
+    bool success = false;
+    
+    //load username
+    if (SPIFFS.exists(USERNAME_FILE)) {
+        fs::File usernameFile = SPIFFS.open(USERNAME_FILE, "r");
+        if (usernameFile) {
+            savedUsername = usernameFile.readString();
+            usernameFile.close();
+            Serial.print("Loaded Username: ");
+            Serial.println(savedUsername);
+            success = true;
+        }
+    } else {
+        Serial.println("Username file not found");
+    }
+    
+    return success;
+}

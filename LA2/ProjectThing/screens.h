@@ -53,6 +53,7 @@ extern bool inAPMode;
 extern bool wiFiConnected;
 extern String savedSSID;
 extern String savedPassword;
+extern String savedUsername;
 extern WebServer webServer;
 extern StepRecord stepHistory[3];
 extern bool leaderboardDataReady;
@@ -107,5 +108,7 @@ bool loadWiFiCredentials();
 void clearWiFiCredentials();
 bool loadStepHistory();
 void saveStepHistory();
+void saveUsername();
+bool loadUsername();
 
 #endif // SCREENS_H
