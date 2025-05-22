@@ -58,6 +58,7 @@ extern StepRecord stepHistory[3];
 extern bool leaderboardDataReady;
 extern std::vector<LeaderboardEntry> leaderboardData;
 extern unsigned long lastLeaderboardUpdate;
+extern unsigned long lastFirebaseSync;
 
 // --- Constants ---
 #define STEP_GOAL 10000
@@ -82,6 +83,7 @@ void drawStatusBar();
 void updateTime();
 void startAP();
 void handleWiFiConfiguration();
+void connectToSavedWiFi();
 void fetchLeaderboardData();
 void syncSteps(uint32_t steps);
 void updateLeaderboardTimer();

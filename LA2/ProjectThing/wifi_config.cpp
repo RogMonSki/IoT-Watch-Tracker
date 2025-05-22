@@ -13,6 +13,7 @@ bool inAPMode = false;
 String apSSID;
 String savedSSID = "";
 String savedPassword = "";
+String previousSSID;
 
 String getWiFiNetworksPage() {
     HTMLDocument doc("Available WiFi Networks");
@@ -32,7 +33,7 @@ String getWiFiNetworksPage() {
     doc.addToBody("<hr>");
 
     // Show current connection status if connected
-    if (wiFiConnected && savedSSID != "") {
+    if (savedSSID != "") {
         doc.addToBody("<div style='margin-bottom: 20px; padding: 10px; background-color: #e8f5e9; border: 1px solid #c8e6c9;'>");
         doc.addToBody("<p><strong>Currently connected to:</strong> " + savedSSID + "</p>");
         doc.addToBody("<p><strong>IP address:</strong> " + WiFi.localIP().toString() + "</p>");
@@ -142,7 +143,7 @@ String getDisconnectionPage() {
     heading.setContent("WiFi Disconnected");
 
     HTMLElement message("p");
-    message.addAttribute("class=\"info\"").setContent("Successfully disconnected from " + savedSSID);
+    message.addAttribute("class=\"info\"").setContent("Successfully disconnected from " + previousSSID);
 
     HTMLElement homeLink("a");
     homeLink.addAttribute("href=\"/\"").setContent("Back to WiFi Networks");
@@ -167,6 +168,7 @@ void disconnectFromWiFi() {
 void startAP() {
     //Ensure WiFi is in a clean state
     WiFi.disconnect(true);
+    wiFiConnected = false;
     delay(100);
     
     //Set WiFi mode 
@@ -236,7 +238,7 @@ void startAP() {
     });
 
     webServer.on("/disconnect", HTTP_POST, []() {
-        String previousSSID = savedSSID;
+        previousSSID = savedSSID;
         disconnectFromWiFi();
         clearWiFiCredentials();
         webServer.send(200, "text/html", getDisconnectionPage());
@@ -247,13 +249,43 @@ void startAP() {
 }
 
 void handleWiFiConfiguration() {
-        if (inAPMode) {
-            WiFi.softAPdisconnect(true);
-            inAPMode = false;
-            if (savedSSID != "") {
-                    WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
-            }
-        } else {
-            startAP();
+    if (inAPMode) {
+        WiFi.softAPdisconnect(true);
+        inAPMode = false;
+        connectToSavedWiFi();
+    } else {
+        startAP();
+    }
+}
+
+void connectToSavedWiFi() {
+    if (savedSSID != "") {
+        Serial.println("Connecting to WiFi...");
+        WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
+        WiFi.setAutoReconnect(true);
+
+        // Wait for connection
+        unsigned long startTime = millis();
+        while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
+            delay(500);
+            Serial.print(".");
         }
+
+        if (WiFi.status() == WL_CONNECTED) {
+            Serial.println("\nConnected!");
+            Serial.print("IP Address: ");
+            Serial.println(WiFi.localIP());
+            inAPMode = false;
+            wiFiConnected = true;
+            setupFirebase();
+            firebaseSetup = true;
+            syncSteps(stepCount);
+            lastFirebaseSync = millis();
+            refreshScreen = true;
+        } else {
+            Serial.println("Couldn't connect to WiFi network");
+            wiFiConnected = false;
+            refreshScreen = true;
+        }
+    }
 }

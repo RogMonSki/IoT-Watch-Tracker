@@ -131,34 +131,7 @@ void setup() {
     lastRecordedDay = currentTime.day;
 
     // Try to connect to saved WiFi
-    if (savedSSID != "") {
-        Serial.println("Connecting to WiFi...");
-        WiFi.begin(savedSSID.c_str(), savedPassword.c_str());
-
-        // Wait for connection
-        unsigned long startTime = millis();
-        while (WiFi.status() != WL_CONNECTED && millis() - startTime < 10000) {
-            delay(500);
-            Serial.print(".");
-        }
-
-        if (WiFi.status() == WL_CONNECTED) {
-            Serial.println("\nConnected!");
-            Serial.print("IP Address: ");
-            Serial.println(WiFi.localIP());
-            inAPMode = false;
-            wiFiConnected = true;
-            setupFirebase();
-            firebaseSetup = true;
-            syncSteps(stepCount);
-            lastFirebaseSync = millis();
-            refreshScreen = true;
-        } else {
-            Serial.println("Couldn't connect to WiFi network");
-            wiFiConnected = false;
-            refreshScreen = true;
-        }
-    }
+    connectToSavedWiFi();
 }
 
 void syncNTPTime() {
@@ -305,6 +278,23 @@ void loop() {
         // Update leaderboard timer if we're on that screen
         if (currentScreen == Screen::LEADERBOARD) {
             updateLeaderboardTimer();
+        }
+
+        // Monitor WiFi connection status
+        static bool lastWiFiStatus = wiFiConnected;
+        bool currentWiFiStatus = (WiFi.status() == WL_CONNECTED);
+        
+        if (lastWiFiStatus != currentWiFiStatus) {
+            wiFiConnected = currentWiFiStatus;
+            lastWiFiStatus = currentWiFiStatus;
+            
+            if (wiFiConnected) {
+                Serial.println("WiFi connection restored");
+            } else {
+                Serial.println("WiFi connection lost");
+            }
+            
+            refreshScreen = true;  // Update WiFi indicator
         }
 
         //checks if the day has changed to reset step counter
