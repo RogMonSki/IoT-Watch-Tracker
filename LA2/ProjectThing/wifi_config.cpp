@@ -155,16 +155,6 @@ String getDisconnectionPage() {
     return doc.toString();
 }
 
-void disconnectFromWiFi() {
-    if (wiFiConnected) {
-        WiFi.disconnect(true);
-        wiFiConnected = false;
-        Serial.println("Disconnected from WiFi network: " + savedSSID);
-        savedSSID = "";
-        savedPassword = "";
-    }
-}
-
 void startAP() {
     //Ensure WiFi is in a clean state
     WiFi.disconnect(true);
@@ -239,7 +229,11 @@ void startAP() {
 
     webServer.on("/disconnect", HTTP_POST, []() {
         previousSSID = savedSSID;
-        disconnectFromWiFi();
+        WiFi.disconnect(true);
+        wiFiConnected = false;
+        Serial.println("Disconnected from WiFi network: " + savedSSID);
+        savedSSID = "";
+        savedPassword = "";
         clearWiFiCredentials();
         webServer.send(200, "text/html", getDisconnectionPage());
     });

@@ -292,6 +292,9 @@ void loop() {
                 Serial.println("WiFi connection restored");
             } else {
                 Serial.println("WiFi connection lost");
+                if (!inAPMode) {
+                    connectToSavedWiFi();
+                }
             }
             
             refreshScreen = true;  // Update WiFi indicator
