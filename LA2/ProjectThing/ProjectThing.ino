@@ -40,6 +40,7 @@ void syncNTPTime();
 void setup() {
     Serial.begin(115200);
     while (!Serial);
+
     //initialize SPIFFS
     if (initStorage()) {
         Serial.println("Storage system initialized");
@@ -50,7 +51,11 @@ void setup() {
         if (loadStepHistory()) {
             Serial.println("Step history loaded successfully");
         }
+        if (loadUsername()) {
+            Serial.println("Username loaded successfully");
+        }
     }
+
     Serial.println("\n--- Starting Setup ---");
     ttgo = TTGOClass::getWatch();
     Serial.println("1. Got Watch Instance");
@@ -183,7 +188,7 @@ void syncSteps(uint32_t steps) {
     //Create a JSON document
     StaticJsonDocument<256> doc;
     doc["steps"] = steps;
-    doc["timestamp"] = millis();
+    doc["username"] = savedUsername;
     doc["datetime"] = String(currentTime.year) + "-" + 
                                         String(currentTime.month) + "-" + 
                                         String(currentTime.day) + " " + 

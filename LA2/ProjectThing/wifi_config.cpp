@@ -14,9 +14,89 @@ String apSSID;
 String savedSSID = "";
 String savedPassword = "";
 String previousSSID;
+String savedUsername = "";
 
-String getWiFiNetworksPage() {
-    HTMLDocument doc("Available WiFi Networks");
+String getHomePage() {
+    HTMLDocument doc("T-Watch Setup");
+
+    doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+    doc.addStyles("table { width: 100%; border-collapse: collapse; }");
+    doc.addStyles("table, th, td { border: 1px solid black; }");
+    doc.addStyles("th, td { padding: 8px; text-align: left; }");
+    doc.addStyles("input[type=text], input[type=password] { width: 100%; padding: 8px; margin: 8px 0; }");
+    doc.addStyles("input[type=submit] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }");
+    doc.addStyles(".disconnect { background-color: #f44336; }");
+
+    HTMLElement heading("h1");
+    heading.setContent("T-Watch Setup");
+    doc.addToBody(heading.toString());
+    
+    doc.addToBody("<hr>");
+    
+    // Device Status
+    doc.addToBody("<h2>Device Status</h2>");
+    
+    doc.addToBody("<table>");
+    
+    // Username row
+    doc.addToBody("<tr>");
+    doc.addToBody("<td><strong>Username</strong></td>");
+    if (savedUsername != "") {
+        doc.addToBody("<td>" + savedUsername + "</td>");
+    } else {
+        doc.addToBody("<td><em>Not set</em></td>");
+    }
+    doc.addToBody("</tr>");
+    
+    // WiFi row
+    doc.addToBody("<tr>");
+    doc.addToBody("<td><strong>WiFi Status</strong></td>");
+    if (wiFiConnected && savedSSID != "") {
+        doc.addToBody("<td>Connected to " + savedSSID + "<br>IP: " + WiFi.localIP().toString() + "</td>");
+    } else {
+        doc.addToBody("<td><em>Not connected</em></td>");
+    }
+    doc.addToBody("</tr>");
+    
+    doc.addToBody("</table>");
+    
+    doc.addToBody("<hr>");
+    
+    // Navigation buttons
+    doc.addToBody("<p><a href='/username-config'><input type='button' value='Set Username'></a></p>");
+    doc.addToBody("<p><a href='/wifi-config'><input type='button' value='WiFi Setup'></a></p>");
+
+    return doc.toString();
+}
+
+String getUsernameConfigPage() {
+    HTMLDocument doc("Username Setup");
+
+    doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+    doc.addStyles("input[type=text] { width: 100%; padding: 8px; margin: 8px 0; }");
+    doc.addStyles("input[type=submit] { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; }");
+
+    HTMLElement heading("h2");
+    heading.setContent("Username Configuration");
+    doc.addToBody(heading.toString());
+    
+    doc.addToBody("<p><a href='/'>← Back to Setup</a></p>");
+    
+    // Show current username if set
+    if (savedUsername != "") {
+        doc.addToBody("<p><strong>Current username:</strong> " + savedUsername + "</p>");
+    }
+    
+    doc.addToBody("<form action='/username' method='post'>");
+    doc.addToBody("<p>Username: <input type='text' name='username' placeholder='Enter your username' maxlength='20' required></p>");
+    doc.addToBody("<p><input type='submit' value='Set Username'></p>");
+    doc.addToBody("</form>");
+
+    return doc.toString();
+}
+
+String getWiFiConfigPage() {
+    HTMLDocument doc("WiFi Setup");
 
     doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
     doc.addStyles("table { width: 100%; border-collapse: collapse; }");
@@ -27,10 +107,10 @@ String getWiFiNetworksPage() {
     doc.addStyles(".disconnect { background-color: #f44336; }");
 
     HTMLElement heading("h2");
-    heading.setContent("Available WiFi Networks");
-
+    heading.setContent("WiFi Configuration");
     doc.addToBody(heading.toString());
-    doc.addToBody("<hr>");
+    
+    doc.addToBody("<p><a href='/'>← Back to Setup</a></p>");
 
     // Show current connection status if connected
     if (savedSSID != "") {
@@ -42,6 +122,8 @@ String getWiFiNetworksPage() {
         doc.addToBody("</form>");
         doc.addToBody("</div>");
     }
+
+    doc.addToBody("<h3>Available Networks</h3>");
 
     // Scan for WiFi networks
     WiFi.scanDelete();
@@ -80,6 +162,28 @@ String getWiFiNetworksPage() {
     return doc.toString();
 }
 
+String getUsernameSuccessPage() {
+    HTMLDocument doc("Username Set");
+
+    doc.addStyles("body { background:#FFF; color: #000; font-family: sans-serif; }");
+    doc.addStyles(".success { color: green; font-weight: bold; }");
+
+    HTMLElement heading("h2");
+    heading.setContent("Username Updated");
+
+    HTMLElement message("p");
+    message.addAttribute("class=\"success\"").setContent("Username successfully set to: " + savedUsername);
+
+    HTMLElement homeLink("a");
+    homeLink.addAttribute("href=\"/\"").setContent("Back to Setup");
+
+    doc.addToBody(heading.toString());
+    doc.addToBody(message.toString());
+    doc.addToBody(homeLink.toString());
+
+    return doc.toString();
+}
+
 String getConnectionSuccessPage() {
     HTMLDocument doc("Connection Successful");
 
@@ -96,7 +200,7 @@ String getConnectionSuccessPage() {
     ipInfo.setContent("IP Address: " + WiFi.localIP().toString());
 
     HTMLElement homeLink("a");
-    homeLink.addAttribute("href=\"/\"").setContent("Connect to Another Network");
+    homeLink.addAttribute("href=\"/\"").setContent("Back to Setup");
 
     doc.addToBody(heading.toString());
     doc.addToBody(message.toString());
@@ -119,15 +223,15 @@ String getConnectionFailurePage() {
     message.addAttribute("class=\"failure\"").setContent("Failed to connect to the WiFi network. Please check your password and try again.");
 
     HTMLElement retryLink("a");
-    retryLink.addAttribute("href=\"/wifi\"").setContent("Try Again");
+    retryLink.addAttribute("href=\"/wifi-config\"").setContent("Try Again");
 
     HTMLElement homeLink("a");
-    homeLink.addAttribute("href=\"/\"").setContent("Back");
+    homeLink.addAttribute("href=\"/\"").setContent("Back to Setup");
 
     doc.addToBody(heading.toString());
     doc.addToBody(message.toString());
     doc.addToBody(retryLink.toString());
-    doc.addToBody(" ");
+    doc.addToBody(" | ");
     doc.addToBody(homeLink.toString());
 
     return doc.toString();
@@ -146,7 +250,7 @@ String getDisconnectionPage() {
     message.addAttribute("class=\"info\"").setContent("Successfully disconnected from " + previousSSID);
 
     HTMLElement homeLink("a");
-    homeLink.addAttribute("href=\"/\"").setContent("Back to WiFi Networks");
+    homeLink.addAttribute("href=\"/\"").setContent("Back to Setup");
 
     doc.addToBody(heading.toString());
     doc.addToBody(message.toString());
@@ -186,8 +290,38 @@ void startAP() {
 
     // Setup web server routes
     webServer.on("/", []() {
-        String toSend = getWiFiNetworksPage();
+        String toSend = getHomePage();
         webServer.send(200, "text/html", toSend);
+    });
+
+    webServer.on("/username-config", []() {
+        String toSend = getUsernameConfigPage();
+        webServer.send(200, "text/html", toSend);
+    });
+
+    webServer.on("/wifi-config", []() {
+        String toSend = getWiFiConfigPage();
+        webServer.send(200, "text/html", toSend);
+    });
+
+    webServer.on("/username", HTTP_POST, []() {
+        String username = webServer.arg("username");
+        
+        if (username.length() > 0) {
+            // Trim whitespace and limit length
+            username.trim();
+            if (username.length() > 20) {
+                username = username.substring(0, 20);
+            }
+            
+            savedUsername = username;
+            saveUsername();
+            
+            Serial.println("Username set to: " + savedUsername);
+            webServer.send(200, "text/html", getUsernameSuccessPage());
+        } else {
+            webServer.send(400, "text/plain", "Username is required");
+        }
     });
 
     webServer.on("/connect", HTTP_POST, []() {
