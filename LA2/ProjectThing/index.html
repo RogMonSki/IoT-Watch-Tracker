@@ -98,8 +98,16 @@
         function updateLeaderboard(data) {
             const devices = [];
             for (const deviceId in data) {
+            	const deviceData = data[deviceId];
+            	
+            	let displayName = deviceData.username || "";
+            	if (!displayName || displayName.trim() === "") {
+            		displayName = deviceId.length > 8 ? "..." + deviceId.slice(-8) : deviceId;
+				}
+				
                 devices.push({
                     id: deviceId,
+                    displayName: displayName,
                     steps: data[deviceId].steps || 0,
                     datetime: data[deviceId].datetime || 'Unknown'
                 });
@@ -118,7 +126,7 @@
                 row.appendChild(rankCell);
                 
                 const deviceCell = document.createElement('td');
-                deviceCell.textContent = device.id;
+                deviceCell.textContent = device.displayName;
                 row.appendChild(deviceCell);
                 
                 const stepsCell = document.createElement('td');

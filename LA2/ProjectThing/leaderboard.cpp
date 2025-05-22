@@ -63,11 +63,18 @@ void fetchLeaderboardData() {
             // Process each device
             for (JsonPair kv : doc.as<JsonObject>()) {
                 LeaderboardEntry entry;
-                entry.deviceId = kv.key().c_str();
-                
-                // Trim deviceId to last 4 characters (for anonymity)
-                if (entry.deviceId.length() > 4) {
-                    entry.deviceId = "..." + entry.deviceId.substring(entry.deviceId.length() - 4);
+                String deviceId = kv.key().c_str();
+
+                String username = kv.value()["username"] | "";
+                if (username != "" && username.length() > 0) {
+                    entry.deviceId = username;
+                } else {
+                    //uses shortened device id if the username is not set
+                    if (deviceId.length() > 4) {
+                        entry.deviceId = "..." + deviceId.substring(deviceId.length() -4);
+                    } else {
+                        entry.deviceId = deviceId;
+                    }
                 }
                 
                 entry.steps = kv.value()["steps"] | 0;
@@ -140,11 +147,20 @@ void drawLeaderboardScreen() {
     // Find current device in the leaderboard
     String currentDeviceId = WiFi.macAddress();
     currentDeviceId.replace(":", "");
+    String currentUsername = savedUsername;
 
     int position = -1;
     for (size_t i = 0; i < leaderboardData.size(); i++) {
-        // Check if the shortened ID matches the end of the device ID
-        if (leaderboardData[i].deviceId.endsWith(currentDeviceId.substring(currentDeviceId.length() - 4))) {
+        // Check if the shortened ID matches the end of the device ID or the username
+        bool isCurrentDevice = false;
+        if (currentUsername != "" && currentUsername.length() > 0) {
+            //compares to the username if there is one
+            isCurrentDevice = (leaderboardData[i].deviceId == currentUsername);
+        } else {
+            //if there is no username compare with device ID
+            isCurrentDevice = leaderboardData[i].deviceId.endsWith(currentDeviceId.substring(currentDeviceId.length() - 4));
+        }
+        if (isCurrentDevice) {
             position = i + 1;
             break;
         }
