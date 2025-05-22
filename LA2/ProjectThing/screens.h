@@ -59,7 +59,9 @@ extern StepRecord stepHistory[3];
 extern bool leaderboardDataReady;
 extern std::vector<LeaderboardEntry> leaderboardData;
 extern unsigned long lastLeaderboardUpdate;
+extern bool firebaseSetup;
 extern unsigned long lastFirebaseSync;
+extern int lastRecordedDay;
 
 // --- Constants ---
 #define STEP_GOAL 10000

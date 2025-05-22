@@ -4,7 +4,6 @@
 
 extern void setupFirebase();
 extern void syncSteps(uint32_t steps);
-extern bool firebaseSetup;
 extern uint32_t stepCount;
 
 WebServer webServer;
