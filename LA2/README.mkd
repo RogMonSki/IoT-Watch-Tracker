@@ -5,7 +5,8 @@
 This project implements a comprehensive fitness tracking system using the LilyGo T-Watch 2020 V3. The device functions as a smart step counter with cloud connectivity, providing users with real-time step tracking, historical data visualisation, and competitive leaderboards through Firebase integration.
 
 ### Demonstration Video
-[Watch the demonstration video](./demonstration.mp4)
+
+[Watch the demonstration video](LA2/demonstration.mp4)
 
 ## Design Rationale
 
