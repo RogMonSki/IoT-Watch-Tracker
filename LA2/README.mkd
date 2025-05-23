@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-This project implements a comprehensive fitness tracking system using the LilyGo T-Watch 2020 V3. The device functions as a smart step counter with cloud connectivity, providing users with real-time step tracking, historical data visualization, and competitive leaderboards through Firebase integration.
+This project implements a comprehensive fitness tracking system using the LilyGo T-Watch 2020 V3. The device functions as a smart step counter with cloud connectivity, providing users with real-time step tracking, historical data visualisation, and competitive leaderboards through Firebase integration.
 
 ### Demonstration Video
-*[A 1-minute demonstration video showing the device in operation would be included here]*
+[Watch the demonstration video](./demonstration.mp4)
 
 ## Design Rationale
 
@@ -20,7 +20,7 @@ Modern fitness tracking requires devices that are:
 The system demonstrates typical IoT configuration with:
 - **Edge Device**: T-Watch with integrated sensors and display
 - **Local Processing**: On-device step counting and gesture recognition
-- **Network Connectivity**: WiFi for cloud synchronization
+- **Network Connectivity**: WiFi for cloud synchronisation
 - **Cloud Backend**: Firebase Realtime Database for data aggregation
 - **User Interface**: Multi-screen touch interface with web-based configuration
 
@@ -61,9 +61,9 @@ The system demonstrates typical IoT configuration with:
 - Large step count with thousands separator formatting
 - Progress bar toward daily goal (10,000 steps)
 - Percentage completion indicator
-- Intuitive step icon visualization
+- Intuitive step icon visualisation
 
-**Calendar Screen**: Historical step data visualization
+**Calendar Screen**: Historical step data visualisation
 - Last 3 days of step history
 - Progress bars for each day relative to goal
 - Date formatting with proper month/day calculations
@@ -91,16 +91,16 @@ The system demonstrates typical IoT configuration with:
 - Persistent credential storage in SPIFFS
 - Automatic reconnection attempts
 - Connection status monitoring
-- Graceful degradation when offline
+- Step tracking continues working without WiFi connection
 
 #### 4. Cloud Integration
-**Firebase Realtime Database**: Centralized data storage
-- Real-time step count synchronization
+**Firebase Realtime Database**: Centralised data storage
+- Real-time step count synchronisation
 - Username and device identification
 - Timestamp tracking for updates
 - Competitive leaderboard generation
 
-**Data Synchronization**: Robust cloud sync strategy
+**Data Synchronisation**: Robust cloud sync strategy
 - 60-second automatic sync intervals
 - Manual refresh capabilities
 - Offline operation with delayed sync
@@ -130,23 +130,27 @@ All Screens:
 #### File Structure
 ```
 LA2/
-├── README.md                    # This documentation
-├── rubric.md                   # Assessment criteria
-├── platformio.ini              # Build configuration
-├── index.html                  # Standalone leaderboard web page
-└── ProjectThing/               # Main source code
-    ├── ProjectThing.ino        # Main application entry point
-    ├── screens.h               # Shared declarations and constants
+├── ProjectThing/               # Main source code
+    ├── calendar.cpp            # Historical data display
     ├── config.h                # Hardware configuration
     ├── home.cpp                # Home screen implementation
-    ├── steps.cpp               # Step counter screen
-    ├── calendar.cpp            # Historical data display
-    ├── settings.cpp            # Configuration interface
-    ├── leaderboard.cpp         # Firebase integration
-    ├── storage.cpp             # SPIFFS data persistence
-    ├── wifi_config.cpp         # WiFi and web server
     ├── HTMLUtilities.h         # Web page generation utilities
+    ├── index.html              # Standalone leaderboard web page
+    ├── leaderboard.cpp         # Firebase integration
+    ├── ProjectThing.ino        # Main application entry point
+    ├── screens.h               # Shared declarations and constants
+    ├── settings.cpp            # Configuration interface
+    ├── steps.cpp               # Step counter screen
+    ├── storage.cpp             # SPIFFS data persistence
+    └── wifi_config.cpp         # WiFi and web server             
+├── test/
+    ├── test_readme.md          # Test suite documentation
     └── test.cpp                # Comprehensive test suite
+├── .gitignore                  # Version control exclusions
+├── demonstration.mp4           # Video demonstration of functionality
+├── platformio.ini              # Build configuration
+├── README.md                   # This documentation
+└── rubric.md                   # Assessment criteria
 ```
 
 #### Key Design Patterns
@@ -155,11 +159,11 @@ LA2/
 ```cpp
 extern Screen currentScreen;        // Current display state
 extern bool refreshScreen;          // Update flag
-extern uint32_t stepCount;         // Current step count
+extern uint32_t stepCount;          // Current step count
 extern StepRecord stepHistory[3];   // Historical data
 ```
 
-**Hardware Abstraction**: Centralized hardware access
+**Hardware Abstraction**: Centralised hardware access
 ```cpp
 extern TTGOClass *ttgo;    // Main watch object
 extern TFT_eSPI *tft;      // Display interface
@@ -168,7 +172,7 @@ extern BMA *sensor;        // Accelerometer access
 
 **Modular Screen System**: Separate files for each screen with consistent interface
 ```cpp
-void drawHomeScreen();                          // Render functions
+void drawHomeScreen();                                 // Render functions
 void handleHomeTouch(TouchGesture, int16_t, int16_t);  // Input handlers
 ```
 
@@ -176,7 +180,7 @@ void handleHomeTouch(TouchGesture, int16_t, int16_t);  // Input handlers
 ```cpp
 bool loadWiFiCredentials();    // Configuration loading
 void saveStepHistory();        // Data persistence
-bool initStorage();            // Storage initialization
+bool initStorage();            // Storage initialisation
 ```
 
 ### Technical Specifications
@@ -189,7 +193,7 @@ bool initStorage();            // Storage initialization
 **Software Dependencies**:
 - PlatformIO development environment
 - TTGO T-Watch Library for hardware abstraction
-- ArduinoJson for data serialization
+- ArduinoJson for data serialisation
 - Firebase Realtime Database
 - Unity testing framework
 
@@ -204,22 +208,22 @@ bool initStorage();            // Storage initialization
 
 ### Comprehensive Test Suite
 
-The project includes a robust testing framework addressing both software logic and hardware functionality. Testing recognizes the unique challenges of embedded IoT devices where hardware interaction is crucial.
+The project includes a robust testing framework addressing both software logic and hardware functionality. Testing recognises the unique challenges of embedded IoT devices where hardware interaction is crucial.
 
 #### Test Categories
 
-**1. Storage and Logic Tests (13 tests)**
+**1. Storage and Logic Tests (15 tests)**
 - SPIFFS file system operations
 - WiFi credential persistence
 - Username configuration storage
-- Step history JSON serialization
+- Step history JSON serialisation
 - Enum value verification
 - Mathematical calculations (step formatting, progress calculation)
 - Date/time string formatting
 - JSON data handling
 
-**2. Hardware Integration Tests (11 tests)**
-- T-Watch initialization sequence
+**2. Hardware Integration Tests (13 tests)**
+- T-Watch initialisation sequence
 - Display functionality and color rendering
 - Backlight and brightness control
 - Accelerometer configuration and data validation
@@ -315,7 +319,7 @@ pio test -e ttgo-t-watch-test
 
 **Network Integration Testing**:
 1. Test AP mode configuration process
-2. Verify Firebase synchronization with multiple devices
+2. Verify Firebase synchronisation with multiple devices
 3. Confirm graceful handling of network disconnection
 
 **Long-term Operation Testing**:
@@ -378,7 +382,7 @@ pio test -e ttgo-t-watch-test
 **ArduinoJson Library**:
 - Version: ^6.21.3
 - Documentation: https://arduinojson.org/
-- Used for Firebase data serialization and configuration storage
+- Used for Firebase data serialisation and configuration storage
 
 **Firebase Realtime Database**:
 - Endpoint: https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app
@@ -388,21 +392,21 @@ pio test -e ttgo-t-watch-test
 
 **BMA423 Accelerometer**:
 ```cpp
-sensor->enableFeature(BMA423_STEP_CNTR, true);  // Enable step counting
+sensor->enableFeature(BMA423_STEP_CNTR, true);   // Enable step counting
 uint32_t steps = sensor->getCounter();           // Read step count
 sensor->resetStepCounter();                      // Reset to zero
 ```
 
 **TFT Display**:
 ```cpp
-tft->fillScreen(color);                    // Clear display
+tft->fillScreen(color);                   // Clear display
 tft->drawString(text, x, y);              // Render text
 tft->fillRect(x, y, w, h, color);         // Draw filled rectangle
 ```
 
 **SPIFFS Storage**:
 ```cpp
-SPIFFS.begin(true);                       // Initialize file system
+SPIFFS.begin(true);                       // Initialise file system
 File file = SPIFFS.open(path, "r");       // Open file for reading
 file.writeString(data);                   // Write string data
 ```
@@ -411,7 +415,7 @@ file.writeString(data);                   // Write string data
 ```cpp
 WiFi.begin(ssid, password);              // Connect to network
 WiFi.softAP(apSSID, apPassword);         // Create access point
-WiFi.scanNetworks();                      // Scan for available networks
+WiFi.scanNetworks();                     // Scan for available networks
 ```
 
 ## Self-Assessment
@@ -426,19 +430,19 @@ WiFi.scanNetworks();                      // Scan for available networks
 
 **Data Persistence**: The SPIFFS-based storage system reliably preserves user settings and step history across power cycles. The JSON-based data format is both human-readable and efficient.
 
-**Testing Framework**: Implementing comprehensive tests early in development caught numerous issues. The combination of unit tests for logic and integration tests for hardware provided confidence in system reliability.
+**Testing Framework**: The combination of unit tests for logic and integration tests for hardware provided confidence in system reliability.
 
-**Cloud Integration**: Firebase proved an excellent choice for real-time data synchronization. The leaderboard feature successfully demonstrates IoT cloud connectivity and provides meaningful social functionality.
+**Cloud Integration**: Firebase proved an excellent choice for real-time data synchronisation. The leaderboard feature successfully demonstrates IoT cloud connectivity and provides meaningful social functionality.
 
 ### Challenges and Limitations
 
 **Touch Sensitivity**: The capacitive touch interface occasionally registers false gestures or misses intended touches. This required implementing gesture validation logic and could benefit from more sophisticated filtering algorithms.
 
-**Power Management**: While the device operates for a full day, optimizing power consumption could extend battery life. The continuous display updates and WiFi operations consume significant power.
+**Power Management**: While the device operates for a full day, optimising power consumption could extend battery life. The continuous display updates and WiFi operations consume significant power.
 
 **Step Detection Accuracy**: The accelerometer-based step counting works well for normal walking but can be confused by other repetitive motions. More sophisticated machine learning algorithms could improve accuracy.
 
-**Network Dependency**: Many features require WiFi connectivity, which isn't always available. The device gracefully handles offline operation but loses social features and cloud backup.
+**Network Dependency**: Many features require WiFi connectivity, which isn't always available. The device handles offline operation but loses social features and cloud backup.
 
 **Screen Size Constraints**: The 240x240 display limits information density. Some screens feel cramped, particularly the leaderboard when displaying multiple entries.
 
@@ -464,7 +468,7 @@ WiFi.scanNetworks();                      // Scan for available networks
 - **Improved UI**: Add animations and smoother transitions between screens
 
 **Medium-term Features (3-6 months)**:
-- **Goal Customization**: Allow users to set personal daily step targets
+- **Goal Customisation**: Allow users to set personal daily step targets
 - **Achievement System**: Add badges and milestones for motivation
 - **Data Export**: Enable export of historical data to other fitness platforms
 - **Group Challenges**: Implement team-based competitions beyond individual leaderboards
@@ -473,13 +477,13 @@ WiFi.scanNetworks();                      // Scan for available networks
 **Long-term Vision (6+ months)**:
 - **Machine Learning**: On-device activity recognition beyond simple step counting
 - **Health Ecosystem**: Integration with other health monitoring devices
-- **Advanced Analytics**: Trend analysis and personalized insights
+- **Advanced Analytics**: Trend analysis and personalised insights
 - **Social Features**: Friend connections and challenge sharing
-- **Companion App**: Mobile application for extended functionality and data visualization
+- **Companion App**: Mobile application for extended functionality and data visualisation
 
 **Platform Extensions**:
 - **Multi-device Support**: Extend to other ESP32-based wearables
-- **Protocol Standardization**: Implement standard fitness data exchange protocols
+- **Protocol Standardisation**: Implement standard fitness data exchange protocols
 - **Cloud Analytics**: Server-side data processing for population health insights
 - **API Development**: Public API for third-party integrations
 
@@ -487,7 +491,7 @@ WiFi.scanNetworks();                      // Scan for available networks
 
 **IoT Development Insights**:
 1. **Hardware-first Design**: Starting with hardware constraints shapes software architecture decisions
-2. **Network Reliability**: IoT devices must gracefully handle intermittent connectivity
+2. **Network Reliability**: IoT devices must handle intermittent connectivity appropriately
 3. **User Interface Challenges**: Small screens require careful information hierarchy
 4. **Testing Complexity**: Hardware testing requires different strategies than pure software
 5. **Power Awareness**: Every feature decision impacts battery life
@@ -495,12 +499,12 @@ WiFi.scanNetworks();                      // Scan for available networks
 **Project Management**:
 1. **Iterative Development**: Building screen by screen allowed for continuous testing and refinement
 2. **Documentation Importance**: Good documentation becomes crucial as project complexity grows
-3. **Test-driven Benefits**: Writing tests early caught integration issues before they became problems
+3. **Test-driven Benefits**: Writing tests caught integration issues before they became problems
 
 This project successfully demonstrates IoT principles while creating a genuinely useful fitness tracking device. The combination of embedded programming, cloud integration, and user interface design provides a comprehensive learning experience in modern IoT development.
 
 ## Conclusion
 
-The T-Watch Step Counter represents a complete IoT fitness tracking solution, successfully integrating embedded hardware, cloud connectivity, and intuitive user interfaces. The project demonstrates key IoT concepts including sensor integration, wireless communication, data persistence, and real-time synchronization while delivering practical value as a daily-use fitness tracker.
+The T-Watch Step Counter represents a complete IoT fitness tracking solution, successfully integrating embedded hardware, cloud connectivity, and intuitive user interfaces. The project demonstrates key IoT concepts including sensor integration, wireless communication, data persistence, and real-time synchronisation while delivering practical value as a daily-use fitness tracker.
 
 The modular architecture and comprehensive testing approach provide a solid foundation for future enhancements, while the social leaderboard features showcase the collaborative potential of connected devices. This implementation serves as both a functional fitness tracker and a learning platform for IoT development principles.
