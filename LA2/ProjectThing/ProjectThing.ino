@@ -41,18 +41,18 @@ void setup() {
     Serial.begin(115200);
     while (!Serial);
 
-    //initialize SPIFFS storage system for persistant data
+    // Initialize SPIFFS storage system for persistant data
     if (initStorage()) {
         Serial.println("Storage system initialized");
-        //try to load saved WiFi credentials
+        // Try to load saved WiFi credentials
         if (loadWiFiCredentials()) {
             Serial.println("WiFi credentials loaded successfully");
         }
-        //attempt to load 3 days of step history
+        // Attempt to load 3 days of step history
         if (loadStepHistory()) {
             Serial.println("Step history loaded successfully");
         }
-        //attempt to load username
+        // Attempt to load username
         if (loadUsername()) {
             Serial.println("Username loaded successfully");
         }
@@ -83,7 +83,7 @@ void setup() {
     sensor->enableAccel();
     sensor->enableFeature(BMA423_STEP_CNTR, true);
 
-    //resets step counter if no saved history
+    // Resets step counter if no saved history
     if (stepHistory[0].steps == 0) {
         sensor->resetStepCounter();
     }
@@ -127,7 +127,7 @@ void setup() {
         Serial.printf("Day %d: %s - %d steps\n", i, stepHistory[i].date.c_str(), stepHistory[i].steps);
     }
     
-    //creates a step offset to match the sensor value with the saved value
+    // Creates a step offset to match the sensor value with the saved value
     uint32_t sensorSteps = sensor->getCounter();
     stepCount = stepHistory[0].steps;
 
@@ -144,7 +144,7 @@ void setup() {
     connectToSavedWiFi();
 }
 
-//synchronize device time with the NTP servers
+// Synchronize device time with the NTP servers
 void syncNTPTime() {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     Serial.print("Syncing time");
@@ -165,9 +165,9 @@ void syncNTPTime() {
     Serial.println(asctime(&timeinfo));
 }
 
-//initiailise firebase connection and device identification
+// Initiailise firebase connection and device identification
 void setupFirebase() {
-    //unique id from MAC address
+    // Unique id from MAC address
     deviceId = WiFi.macAddress();
     deviceId.replace(":", "");
     
@@ -179,7 +179,7 @@ void setupFirebase() {
     Serial.println("Firebase setup complete");
 }
 
-//syncs step count and user data to firebase cloud database
+// Syncs step count and user data to firebase cloud database
 void syncSteps(uint32_t steps) {
     if (steps == 0 && stepHistory[0].steps > 0) {
         Serial.println("Warning: Preventing sync of zero steps when history has non-zero steps");
@@ -191,7 +191,7 @@ void syncSteps(uint32_t steps) {
         return;
     }
     
-    //firebase REST API path
+    // Firebase REST API path
     String path = "/steps/" + deviceId + ".json";
     String url = FIREBASE_URL + path;
     
@@ -259,7 +259,7 @@ void loop() {
 
     handleTouch();
 
-    //redraws screens if refresh flag is set
+    // Redraws screens if refresh flag is set
     if (refreshScreen) {
         switch (currentScreen) {
             case Screen::HOME:
@@ -308,7 +308,7 @@ void loop() {
                 Serial.println("WiFi connection restored");
             } else {
                 Serial.println("WiFi connection lost");
-                //attempt to reconnect
+                // Attempt to reconnect
                 if (!inAPMode) {
                     connectToSavedWiFi();
                 }
@@ -324,11 +324,11 @@ void loop() {
 
                 String todayDateStr = String(currentTime.year) + "-" + String(currentTime.month) + "-" + String(currentTime.day);
 
-                //shifts step history
+                // Shifts step history
                 stepHistory[2] = stepHistory[1];
                 stepHistory[1] = stepHistory[0];
 
-                //inititialise new day with 0 steps
+                // Inititialise new day with 0 steps
                 stepHistory[0].date = todayDateStr;
                 stepHistory[0].steps = 0;
 
@@ -343,14 +343,14 @@ void loop() {
         }
     }
 
-    //firebase synchronisation when WiFi is available
+    // Firebase synchronisation when WiFi is available
     if (WiFi.status() == WL_CONNECTED) {
         if (!firebaseSetup) {
             setupFirebase();
             firebaseSetup = true;
         }
 
-        //sync step data every 60 seconds
+        // Sync step data every 60 seconds
         unsigned long currentMillis = millis();
         if (currentMillis - lastFirebaseSync >= FIREBASE_SYNC_INTERVAL) {
             lastFirebaseSync = currentMillis;
@@ -358,12 +358,12 @@ void loop() {
         }
     }
 
-    //when in AP mode handle web server requests
+    // When in AP mode handle web server requests
     if (inAPMode) {
         webServer.handleClient();
     }
 
-    //save step history to SPIFFS every 60 seconds
+    // Save step history to SPIFFS every 60 seconds
     if (millis() - lastStepSaveTime >= 60000) {
         lastStepSaveTime = millis();
         saveStepHistory();
@@ -374,7 +374,7 @@ void loop() {
 }
 
 // --- Utility Functions ---
-//draw status bar at the top of the screen showing time, WiFi status, and battery level
+// Draw status bar at the top of the screen showing time, WiFi status, and battery level
 void drawStatusBar() {
     tft->fillRect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT, STATUS_BAR_COLOR);
     char timeStr[9];
@@ -409,7 +409,7 @@ void drawStatusBar() {
     tft->fillRect(SCREEN_WIDTH - 18, 10, batteryLevel * 11 / 100, 11, batteryLevel > 20 ? TFT_GREEN : TFT_RED);
 }
 
-//update current time from RTC
+// Update current time from RTC
 void updateTime() {
     currentTime = ttgo->rtc->getDateTime();
     drawStatusBar();  // Update status bar whenever time is updated
@@ -420,7 +420,7 @@ void updateTime() {
 }
 
 // --- Input Handling ---
-//touch gesture detection system
+// Touch gesture detection system
 void handleTouch() {
     int16_t x, y;
     static int16_t startX = 0, startY = 0;
@@ -497,7 +497,7 @@ void handleTouch() {
     }
 }
 
-//power button detection and display sleep/wake functionality
+// Power button detection and display sleep/wake functionality
 void checkPowerButton() {
     int currentIrqPinState = digitalRead(AXP202_INT);
     if (lastIrqPinState == HIGH && currentIrqPinState == LOW) {

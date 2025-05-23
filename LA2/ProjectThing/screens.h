@@ -30,14 +30,14 @@ enum TouchGesture {
     SWIPE_RIGHT
 };
 
-//structure for firebase cloud leaderboard data
+// Structure for firebase cloud leaderboard data
 struct LeaderboardEntry {
     String deviceId;
     uint32_t steps;
     String lastUpdated;
 };
 
-//step record structure for local step history storage
+// Step record structure for local step history storage
 struct StepRecord {
     String date;
     uint32_t steps;
