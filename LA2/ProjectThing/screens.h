@@ -81,7 +81,7 @@ extern int lastRecordedDay;
 
 // --- Function Declarations ---
 
-// Main/Utility Functions (defined in main.cpp or elsewhere)
+// Main/Utility Functions (defined in ProjectThing.ino or elsewhere)
 void drawStatusBar();
 void updateTime();
 void startAP();

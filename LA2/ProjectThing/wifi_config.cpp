@@ -296,12 +296,12 @@ String getDisconnectionPage() {
 }
 
 void startAP() {
-    //Ensure WiFi is in a clean state
+    // Ensure WiFi is in a clean state
     WiFi.disconnect(true);
     wiFiConnected = false;
     delay(100);
     
-    //Set WiFi mode 
+    // Set WiFi mode 
     WiFi.mode(WIFI_AP_STA);
     delay(100);
     

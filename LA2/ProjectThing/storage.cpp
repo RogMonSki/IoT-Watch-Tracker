@@ -3,13 +3,13 @@
 #include <FS.h>
 #include <ArduinoJson.h>
 
-//file paths for stored values
-#define SSID_FILE "/ssid.txt" //wifi ssid
-#define PASSWORD_FILE "/password.txt" //wifi password
+// File paths for stored values
+#define SSID_FILE "/ssid.txt" // WiFi SSID
+#define PASSWORD_FILE "/password.txt" // WiFi Password
 #define STEP_HISTORY_FILE "/steps.json"
 #define USERNAME_FILE "/username.txt"
 
-//initialise SPIFFS storage
+// Initialise SPIFFS storage
 bool initStorage() {
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS initialization failed");
@@ -105,7 +105,7 @@ void saveWiFiCredentials() {
 bool loadWiFiCredentials() {
     bool success = false;
     
-    //load SSID
+    // load SSID
     if (SPIFFS.exists(SSID_FILE)) {
         fs::File ssidFile = SPIFFS.open(SSID_FILE, "r");
         if (ssidFile) {
@@ -119,20 +119,20 @@ bool loadWiFiCredentials() {
         Serial.println("SSID file not found");
     }
     
-    //load password
+    // Load password
     if (SPIFFS.exists(PASSWORD_FILE)) {
         fs::File passFile = SPIFFS.open(PASSWORD_FILE, "r");
         if (passFile) {
             savedPassword = passFile.readString();
             passFile.close();
             Serial.println("Loaded password");
-            success = success && true;  //success if both loaded
+            success = success && true;  // Success if both loaded
         } else {
-            success = false;  //failed to load
+            success = false;  // Failed to load
         }
     } else {
         Serial.println("Password file not found");
-        success = false;  //file doesn't exist
+        success = false;  // File doesn't exist
     }
     
     return success;
@@ -164,7 +164,7 @@ void saveUsername() {
 bool loadUsername() {
     bool success = false;
     
-    //load username
+    // Load username
     if (SPIFFS.exists(USERNAME_FILE)) {
         fs::File usernameFile = SPIFFS.open(USERNAME_FILE, "r");
         if (usernameFile) {

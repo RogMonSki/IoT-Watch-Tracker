@@ -22,7 +22,7 @@ int lastRecordedDay = -1;
 int lastIrqPinState = HIGH;
 uint32_t stepCountOffset = 0;
 
-//Firebase things
+// Firebase things
 bool firebaseSetup = false;
 unsigned long lastFirebaseSync = 0;
 const unsigned long FIREBASE_SYNC_INTERVAL = 60000;
@@ -70,7 +70,7 @@ void setup() {
     tft->setRotation(0);
     Serial.println("4. Display setup finished");
 
-    // Initialsie step sensor
+    // Initialise step sensor
     sensor = ttgo->bma;
     Acfg cfg;
     cfg.odr = BMA4_OUTPUT_DATA_RATE_100HZ;
@@ -85,7 +85,7 @@ void setup() {
     }
     Serial.println("5. Sensor setup finished");
 
-    // Initialize power management
+    // Initialise power management
     ttgo->power->begin();
     Serial.println("6. ttgo->power->begin() finished");
     ttgo->power->enableIRQ(AXP202_PEK_SHORTPRESS_IRQ, true);
@@ -95,7 +95,7 @@ void setup() {
     pinMode(AXP202_INT, INPUT_PULLUP);
     Serial.println("AXP IRQ Pin (GPIO 35) set to input");
 
-    // Initialize RTC
+    // Initialise RTC
     ttgo->rtc->check();
     currentTime = ttgo->rtc->getDateTime();
     Serial.println("9. RTC setup finished");
@@ -196,7 +196,7 @@ void syncSteps(uint32_t steps) {
                                         String(currentTime.minute) + ":" + 
                                         String(currentTime.second);
     
-    //Serialize JSON
+    //Serialise JSON
     String jsonString;
     serializeJson(doc, jsonString);
     
@@ -305,7 +305,7 @@ void loop() {
             refreshScreen = true;  // Update WiFi indicator
         }
 
-        //checks if the day has changed to reset step counter
+        // Checks if the day has changed to reset step counter
         if (lastRecordedDay != currentTime.day) {
             if (lastRecordedDay != -1) {
                 Serial.println("Day changed - STEP COUNTER RESET");
