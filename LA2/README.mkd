@@ -35,6 +35,8 @@ The system demonstrates typical IoT configuration with:
 - RTC for accurate timekeeping
 - Battery management for portable use
 
+![Hardware Setup](LA2/pictures/hardware.jpg)
+
 **Software Architecture**: Modular design separating concerns:
 - Core hardware abstraction
 - Screen management system
