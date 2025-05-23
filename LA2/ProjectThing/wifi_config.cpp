@@ -15,6 +15,7 @@ String savedPassword = "";
 String previousSSID;
 String savedUsername = "";
 
+//generate main configuration dashboard page
 String getHomePage() {
     HTMLDocument doc("T-Watch Setup");
 
@@ -76,6 +77,7 @@ String getHomePage() {
     return doc.toString();
 }
 
+//generate username configuration page
 String getUsernameConfigPage() {
     HTMLDocument doc("Username Setup");
 
@@ -110,6 +112,7 @@ String getUsernameConfigPage() {
     return doc.toString();
 }
 
+//generate WiFi network configuration page
 String getWiFiConfigPage() {
     HTMLDocument doc("WiFi Setup");
 
@@ -191,6 +194,7 @@ String getWiFiConfigPage() {
     return doc.toString();
 }
 
+//generate username update confirmation page
 String getUsernameSuccessPage() {
     HTMLDocument doc("Username Set");
 
@@ -216,6 +220,7 @@ String getUsernameSuccessPage() {
     return doc.toString();
 }
 
+//generate WiFI connection success page
 String getConnectionSuccessPage() {
     HTMLDocument doc("Connection Successful");
 
@@ -245,6 +250,7 @@ String getConnectionSuccessPage() {
     return doc.toString();
 }
 
+//generate WiFI connection failure page
 String getConnectionFailurePage() {
     HTMLDocument doc("Connection Failed");
 
@@ -270,6 +276,7 @@ String getConnectionFailurePage() {
     return doc.toString();
 }
 
+//generate WiFi disconnection confirmation page
 String getDisconnectionPage() {
     HTMLDocument doc("Disconnected from WiFi");
 
@@ -295,6 +302,7 @@ String getDisconnectionPage() {
     return doc.toString();
 }
 
+//start access point mode for device configuration
 void startAP() {
     // Ensure WiFi is in a clean state
     WiFi.disconnect(true);
@@ -412,6 +420,7 @@ void startAP() {
     inAPMode = true;
 }
 
+//toggle AP mode
 void handleWiFiConfiguration() {
     if (inAPMode) {
         WiFi.softAPdisconnect(true);
@@ -422,6 +431,7 @@ void handleWiFiConfiguration() {
     }
 }
 
+//connect to saved WiFi network using stored credentials
 void connectToSavedWiFi() {
     if (savedSSID != "") {
         Serial.println("Connecting to WiFi...");

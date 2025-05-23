@@ -30,12 +30,14 @@ enum TouchGesture {
     SWIPE_RIGHT
 };
 
+//structure for firebase cloud leaderboard data
 struct LeaderboardEntry {
     String deviceId;
     uint32_t steps;
     String lastUpdated;
 };
 
+//step record structure for local step history storage
 struct StepRecord {
     String date;
     uint32_t steps;
@@ -64,9 +66,9 @@ extern unsigned long lastFirebaseSync;
 extern int lastRecordedDay;
 
 // --- Constants ---
-#define STEP_GOAL 10000
+#define STEP_GOAL 10000 //daily step target for progress calculation
 #define FIREBASE_URL "https://com3505-3ba3c-default-rtdb.europe-west1.firebasedatabase.app"
-#define LEADERBOARD_UPDATE_INTERVAL 60000 // 1 minute
+#define LEADERBOARD_UPDATE_INTERVAL 60000 // refresh leaderboard every 60 seconds
 
 // Colours
 #define STATUS_BAR_COLOR TFT_NAVY

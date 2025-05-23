@@ -6,8 +6,8 @@
 // File paths for stored values
 #define SSID_FILE "/ssid.txt" // WiFi SSID
 #define PASSWORD_FILE "/password.txt" // WiFi Password
-#define STEP_HISTORY_FILE "/steps.json"
-#define USERNAME_FILE "/username.txt"
+#define STEP_HISTORY_FILE "/steps.json" //Step history in JSON format
+#define USERNAME_FILE "/username.txt" //User's display name for leaderboard
 
 // Initialise SPIFFS storage
 bool initStorage() {
@@ -19,6 +19,7 @@ bool initStorage() {
     return true;
 }
 
+//load step history from persistant storage
 bool loadStepHistory() {
     if (!SPIFFS.exists(STEP_HISTORY_FILE)) {
         Serial.println("Step history file not found");
@@ -31,6 +32,7 @@ bool loadStepHistory() {
         return false;
     }
 
+    //parse the JSON data from file
     StaticJsonDocument<512> doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
@@ -40,6 +42,7 @@ bool loadStepHistory() {
         return false;
     }
 
+    //extracts step record
     JsonArray stepsArray = doc.as<JsonArray>();
     int i = 0;
     for (JsonObject record : stepsArray) {
@@ -57,7 +60,9 @@ bool loadStepHistory() {
     return true;
 }
 
+//saves stepHiistory array to persistent storage 
 void saveStepHistory() {
+    //create JSON document
     StaticJsonDocument<512> doc;
     JsonArray stepsArray = doc.to<JsonArray>();
 
@@ -82,6 +87,7 @@ void saveStepHistory() {
     file.close();
 }
 
+//save WiFi credentials to persistent storage
 void saveWiFiCredentials() {
     fs::File ssidFile = SPIFFS.open(SSID_FILE, "w");
     if (ssidFile) {
@@ -102,6 +108,7 @@ void saveWiFiCredentials() {
     }
 }
 
+//load WiFi credentials from persistent storage
 bool loadWiFiCredentials() {
     bool success = false;
     
@@ -138,6 +145,7 @@ bool loadWiFiCredentials() {
     return success;
 }
 
+//removes both SSID and password files from SPIFFS
 void clearWiFiCredentials() {
     if (SPIFFS.exists(SSID_FILE)) {
         SPIFFS.remove(SSID_FILE);
@@ -150,6 +158,7 @@ void clearWiFiCredentials() {
     }
 }
 
+//save username to persistent storage
 void saveUsername() {
     fs::File usernameFile = SPIFFS.open(USERNAME_FILE, "w");
     if (usernameFile) {
@@ -161,6 +170,7 @@ void saveUsername() {
     }
 }
 
+//load username from persistent storage
 bool loadUsername() {
     bool success = false;
     
