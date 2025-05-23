@@ -22,7 +22,7 @@ void handleSettingsTouch(TouchGesture gesture, int16_t x, int16_t y) {
                 Serial.print("Brightness increased to: ");
                 Serial.println(currentBrightness);
             }
-            //WiFi button
+            // WiFi button
             else if (x > 30 && x < SCREEN_WIDTH - 30 && y > 140 && y < 180) {
                 Serial.println("Wifi button pressed");
                 handleWiFiConfiguration();
