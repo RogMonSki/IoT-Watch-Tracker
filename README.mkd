@@ -1,3 +1,6 @@
+# Note
+This project has been imported from GitLab and therefore details about the repository may not be accurate.
+
 # T-Watch Step Counter - IoT Fitness Tracking Device
 
 ## Project Overview
