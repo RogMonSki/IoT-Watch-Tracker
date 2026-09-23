@@ -9,7 +9,7 @@ This project implements a comprehensive fitness tracking system using the LilyGo
 
 ### Demonstration Video
 
-[Watch the demonstration video](LA2/demonstration.mp4)
+[Watch the demonstration video](demonstration.mp4)
 
 ## Design Rationale
 
